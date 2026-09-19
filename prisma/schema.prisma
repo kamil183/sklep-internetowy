@@ -1,0 +1,232 @@
+// Prisma schema — works against Supabase's Postgres (or any Postgres instance).
+// Run `npx prisma migrate dev` after setting DATABASE_URL in .env
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- AUTH / ADMIN ----------
+
+enum AdminRole {
+  OWNER
+  STAFF
+}
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String // bcrypt hash — never store plain text passwords
+  name         String
+  role         AdminRole @default(STAFF)
+  createdAt    DateTime  @default(now())
+  lastLoginAt  DateTime?
+}
+
+// ---------- CATALOG ----------
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  products  Product[]
+  createdAt DateTime  @default(now())
+}
+
+model Product {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  description String
+  priceCents  Int // stored in grosze (cents) to avoid float rounding issues
+  images      ProductImage[]
+  categoryId  String?
+  category    Category?    @relation(fields: [categoryId], references: [id])
+  stock       Int          @default(0)
+  isActive    Boolean      @default(true)
+  orderItems  OrderItem[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([isActive])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  position  Int     @default(0)
+}
+
+// A durable log of every stock change, so admin can audit "why did stock drop".
+model InventoryMovement {
+  id        String   @id @default(cuid())
+  productId String
+  delta     Int // negative = decrement, positive = restock
+  reason    String // e.g. "ORDER_PAID:ord_123", "MANUAL_ADJUSTMENT"
+  createdAt DateTime @default(now())
+}
+
+// ---------- CUSTOMERS ----------
+
+model Customer {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  firstName String
+  lastName  String
+  phone     String
+  orders    Order[]
+  createdAt DateTime @default(now())
+}
+
+// ---------- ORDERS ----------
+
+enum OrderStatus {
+  NEW
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum DeliveryMethod {
+  INPOST_LOCKER // Paczkomat
+  INPOST_COURIER
+}
+
+model Order {
+  id                String         @id @default(cuid())
+  orderNumber       String         @unique // human-facing, e.g. "AT-2026-000123"
+  customerId        String
+  customer          Customer       @relation(fields: [customerId], references: [id])
+
+  items             OrderItem[]
+
+  subtotalCents     Int
+  discountCents     Int            @default(0)
+  shippingCents     Int
+  totalCents        Int
+
+  discountCodeId    String?
+  discountCode      DiscountCode?  @relation(fields: [discountCodeId], references: [id])
+
+  deliveryMethod    DeliveryMethod
+  inpostLockerCode  String? // paczkomat point selected via Geowidget, e.g. "WAW01A"
+  shippingAddress   Json? // used for courier delivery
+
+  status            OrderStatus    @default(NEW)
+  paymentStatus     PaymentStatus  @default(PENDING)
+
+  payment           Payment?
+  shipment          Shipment?
+
+  // Attribution — filled in later once analytics/UTM tracking is wired up
+  trafficSource     String? // "google" | "instagram" | "ads" | "direct" | "other"
+  utmSource         String?
+  utmMedium         String?
+  utmCampaign       String?
+
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id             String  @id @default(cuid())
+  orderId        String
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product @relation(fields: [productId], references: [id])
+  quantity       Int
+  unitPriceCents Int // snapshot of price at time of purchase
+}
+
+// ---------- PAYMENTS (Stripe) ----------
+
+model Payment {
+  id                    String        @id @default(cuid())
+  orderId               String        @unique
+  order                 Order         @relation(fields: [orderId], references: [id])
+  provider              String        @default("stripe")
+  stripePaymentIntentId String?       @unique
+  stripeCheckoutSessionId String?     @unique
+  status                PaymentStatus @default(PENDING)
+  method                String? // "blik" | "card" | "p24" | "apple_pay" | "google_pay"
+  amountCents           Int
+  currency              String        @default("pln")
+  rawWebhookPayload      Json? // last webhook event received, for auditing
+  createdAt             DateTime      @default(now())
+  confirmedAt           DateTime?
+}
+
+// ---------- DISCOUNTS ----------
+
+enum DiscountType {
+  PERCENT
+  FIXED_AMOUNT
+}
+
+model DiscountCode {
+  id              String         @id @default(cuid())
+  code            String         @unique
+  type            DiscountType
+  value           Int // percent (0-100) or amount in cents, depending on `type`
+  startsAt        DateTime?
+  endsAt          DateTime?
+  maxUses         Int?
+  minOrderCents   Int?
+  isActive        Boolean        @default(true)
+  usages          DiscountUsage[]
+  orders          Order[]
+  createdAt       DateTime       @default(now())
+}
+
+model DiscountUsage {
+  id             String       @id @default(cuid())
+  discountCodeId String
+  discountCode   DiscountCode @relation(fields: [discountCodeId], references: [id])
+  orderId        String       @unique
+  discountCents  Int
+  createdAt      DateTime     @default(now())
+}
+
+// ---------- SHIPPING (InPost) ----------
+
+enum ShipmentStatus {
+  NOT_CREATED
+  CREATED
+  CONFIRMED
+  DISPATCHED
+  IN_TRANSIT
+  DELIVERED
+  RETURNED
+}
+
+model Shipment {
+  id                String         @id @default(cuid())
+  orderId           String         @unique
+  order             Order          @relation(fields: [orderId], references: [id])
+  provider          String         @default("inpost")
+  inpostShipmentId  String? // ShipX shipment id, once created
+  trackingNumber    String?
+  labelUrl          String?
+  status            ShipmentStatus @default(NOT_CREATED)
+  lastSyncedAt      DateTime?
+  createdAt         DateTime       @default(now())
+}
