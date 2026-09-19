@@ -20,7 +20,7 @@ enum AdminRole {
 model AdminUser {
   id           String    @id @default(cuid())
   email        String    @unique
-  passwordHash String // bcrypt hash — never store plain text passwords
+  passwordHash String
   name         String
   role         AdminRole @default(STAFF)
   createdAt    DateTime  @default(now())
@@ -42,7 +42,7 @@ model Product {
   name        String
   slug        String       @unique
   description String
-  priceCents  Int // stored in grosze (cents) to avoid float rounding issues
+  priceCents  Int
   images      ProductImage[]
   categoryId  String?
   category    Category?    @relation(fields: [categoryId], references: [id])
@@ -63,12 +63,11 @@ model ProductImage {
   position  Int     @default(0)
 }
 
-// A durable log of every stock change, so admin can audit "why did stock drop".
 model InventoryMovement {
   id        String   @id @default(cuid())
   productId String
-  delta     Int // negative = decrement, positive = restock
-  reason    String // e.g. "ORDER_PAID:ord_123", "MANUAL_ADJUSTMENT"
+  delta     Int
+  reason    String
   createdAt DateTime @default(now())
 }
 
@@ -103,13 +102,13 @@ enum PaymentStatus {
 }
 
 enum DeliveryMethod {
-  INPOST_LOCKER // Paczkomat
+  INPOST_LOCKER
   INPOST_COURIER
 }
 
 model Order {
   id                String         @id @default(cuid())
-  orderNumber       String         @unique // human-facing, e.g. "AT-2026-000123"
+  orderNumber       String         @unique
   customerId        String
   customer          Customer       @relation(fields: [customerId], references: [id])
 
@@ -124,17 +123,17 @@ model Order {
   discountCode      DiscountCode?  @relation(fields: [discountCodeId], references: [id])
 
   deliveryMethod    DeliveryMethod
-  inpostLockerCode  String? // paczkomat point selected via Geowidget, e.g. "WAW01A"
-  shippingAddress   Json? // used for courier delivery
+  inpostLockerCode  String?
+  shippingAddress   Json?
 
   status            OrderStatus    @default(NEW)
   paymentStatus     PaymentStatus  @default(PENDING)
 
   payment           Payment?
   shipment          Shipment?
+  discountUsage     DiscountUsage?
 
-  // Attribution — filled in later once analytics/UTM tracking is wired up
-  trafficSource     String? // "google" | "instagram" | "ads" | "direct" | "other"
+  trafficSource     String?
   utmSource         String?
   utmMedium         String?
   utmCampaign       String?
@@ -154,25 +153,25 @@ model OrderItem {
   productId      String
   product        Product @relation(fields: [productId], references: [id])
   quantity       Int
-  unitPriceCents Int // snapshot of price at time of purchase
+  unitPriceCents Int
 }
 
 // ---------- PAYMENTS (Stripe) ----------
 
 model Payment {
-  id                    String        @id @default(cuid())
-  orderId               String        @unique
-  order                 Order         @relation(fields: [orderId], references: [id])
-  provider              String        @default("stripe")
-  stripePaymentIntentId String?       @unique
-  stripeCheckoutSessionId String?     @unique
-  status                PaymentStatus @default(PENDING)
-  method                String? // "blik" | "card" | "p24" | "apple_pay" | "google_pay"
-  amountCents           Int
-  currency              String        @default("pln")
-  rawWebhookPayload      Json? // last webhook event received, for auditing
-  createdAt             DateTime      @default(now())
-  confirmedAt           DateTime?
+  id                      String        @id @default(cuid())
+  orderId                 String        @unique
+  order                   Order         @relation(fields: [orderId], references: [id])
+  provider                String        @default("stripe")
+  stripePaymentIntentId   String?       @unique
+  stripeCheckoutSessionId String?       @unique
+  status                  PaymentStatus @default(PENDING)
+  method                  String?
+  amountCents             Int
+  currency                String        @default("pln")
+  rawWebhookPayload       Json?
+  createdAt               DateTime      @default(now())
+  confirmedAt             DateTime?
 }
 
 // ---------- DISCOUNTS ----------
@@ -186,7 +185,7 @@ model DiscountCode {
   id              String         @id @default(cuid())
   code            String         @unique
   type            DiscountType
-  value           Int // percent (0-100) or amount in cents, depending on `type`
+  value           Int
   startsAt        DateTime?
   endsAt          DateTime?
   maxUses         Int?
@@ -202,6 +201,7 @@ model DiscountUsage {
   discountCodeId String
   discountCode   DiscountCode @relation(fields: [discountCodeId], references: [id])
   orderId        String       @unique
+  order          Order        @relation(fields: [orderId], references: [id])
   discountCents  Int
   createdAt      DateTime     @default(now())
 }
@@ -223,7 +223,7 @@ model Shipment {
   orderId           String         @unique
   order             Order          @relation(fields: [orderId], references: [id])
   provider          String         @default("inpost")
-  inpostShipmentId  String? // ShipX shipment id, once created
+  inpostShipmentId  String?
   trackingNumber    String?
   labelUrl          String?
   status            ShipmentStatus @default(NOT_CREATED)
