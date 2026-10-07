@@ -1,8 +1,6 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useCart } from "@/components/CartContext";
 import InpostGeowidget from "@/components/InpostGeowidget";
@@ -12,7 +10,10 @@ const SHIPPING_LABELS: Record<string, { label: string; priceCents: number }> = {
   INPOST_COURIER: { label: "Kurier InPost", priceCents: 1600 },
 };
 
-export default function CheckoutPage() {
+// useSearchParams() must sit behind a Suspense boundary — otherwise the page
+// cannot be prerendered statically and `next build` fails with
+// "prerender error" at /checkout (see nextjs.org/docs/messages/missing-suspense-with-csr-bailout).
+function CheckoutForm() {
   const { items, subtotalCents } = useCart();
   const searchParams = useSearchParams();
   const discountCode = searchParams.get("code") ?? "";
@@ -145,5 +146,13 @@ export default function CheckoutPage() {
         </button>
       </div>
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<div className="max-w-5xl mx-auto px-6 pt-32 pb-24 text-creamdim">Ładowanie…</div>}>
+      <CheckoutForm />
+    </Suspense>
   );
 }
