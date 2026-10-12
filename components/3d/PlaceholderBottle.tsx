@@ -301,14 +301,14 @@ export function PlaceholderBottle({ lowPower }: { lowPower: boolean }) {
   // przezroczysty na tyle, by światło przechodziło przez całą objętość.
   const liquid = (
     <meshPhysicalMaterial
-      color="#F4E4BC"
-      roughness={0.14}
+      color="#F0DBA2"
+      roughness={0.12}
       metalness={0}
       clearcoat={0.8}
       clearcoatRoughness={0.12}
-      envMapIntensity={1.5}
+      envMapIntensity={1.4}
       transparent
-      opacity={0.62}
+      opacity={0.8}
     />
   );
 
@@ -346,14 +346,14 @@ export function PlaceholderBottle({ lowPower }: { lowPower: boolean }) {
       {/* Tafla płynu — subtelny menisk w kolorze cieczy */}
       <mesh geometry={surfaceGeo} position={[0, LIQUID_Y + LIQUID_H / 2, 0]}>
         <meshPhysicalMaterial
-          color="#F1E2B8"
+          color="#F6E7BE"
           roughness={0.06}
           metalness={0}
           clearcoat={1}
           clearcoatRoughness={0.05}
           envMapIntensity={1.3}
           transparent
-          opacity={0.5}
+          opacity={0.62}
         />
       </mesh>
 

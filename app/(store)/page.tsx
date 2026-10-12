@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import ProductCard from "@/components/ProductCard";
+import AddToCartForm from "@/components/AddToCartForm";
 import PerfumeBottle3D from "@/components/3d/PerfumeBottle3D";
 import Reveal from "@/components/Reveal";
 
@@ -46,7 +47,7 @@ const COPY = {
 } as const;
 
 export default async function HomePage() {
-  const [featured, categories] = await Promise.all([
+  const [featured, categories, product] = await Promise.all([
     prisma.product.findMany({
       where: { isActive: true },
       include: { images: { orderBy: { position: "asc" }, take: 1 } },
@@ -54,6 +55,12 @@ export default async function HomePage() {
       take: 6,
     }),
     prisma.category.findMany({ include: { _count: { select: { products: true } } } }),
+    // Sekcja sprzedażowa: sklep ma jeden produkt — pobieramy go na stałe.
+    prisma.product.findFirst({
+      where: { isActive: true },
+      include: { images: { orderBy: { position: "asc" } } },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
 
   return (
@@ -89,8 +96,8 @@ export default async function HomePage() {
 
           <Reveal delay={0.3}>
             <div className="mt-10 flex flex-wrap gap-4">
-              <Link href="/products" className="btn-primary">
-                Zobacz produkty
+              <Link href="#produkt" className="btn-primary">
+                Zobacz produkt
               </Link>
               <Link href="#historia" className="btn-ghost">
                 Poznaj zapach
@@ -216,6 +223,71 @@ export default async function HomePage() {
                 </article>
               </Reveal>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ========================== PRODUKT (SPRZEDAŻ) ==========================
+          Układ jak w poprzedniej wersji: treść po lewej, prawa kolumna
+          pozostawiona flakonowi 3D (scroll story). */}
+      <section id="produkt" data-bottle className="relative py-8 pb-32">
+        <div className="mx-auto max-w-7xl px-6 md:px-10">
+          <div className="grid items-start gap-14 lg:grid-cols-2">
+            <div>
+              <Reveal>
+                <p className="section-label">Produkt</p>
+              </Reveal>
+
+              <Reveal delay={0.1}>
+                <h2 className="font-display text-4xl font-light md:text-6xl">LAVIÉRA</h2>
+                <p className="mt-3 text-[11px] uppercase tracking-[0.35em] text-gold">
+                  Eau de Parfum · 50 ml
+                </p>
+              </Reveal>
+
+              <Reveal delay={0.2}>
+                <p className="mt-8 max-w-md text-sm leading-relaxed text-creamdim">{COPY.character}</p>
+              </Reveal>
+
+              <Reveal delay={0.3}>
+                <div className="mt-10">
+                  {product ? (
+                    <>
+                      <p className="mb-6 font-display text-3xl text-gold">
+                        {(product.priceCents / 100).toFixed(2)} zł
+                      </p>
+                      <AddToCartForm
+                        productId={product.id}
+                        name={product.name}
+                        priceCents={product.priceCents}
+                        imageUrl={product.images[0]?.url ?? "/images/laviera-flakon.jpg"}
+                        stock={product.stock}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <p className="mb-6 font-display text-3xl text-creamdim">Wkrótce w sprzedaży</p>
+                      <Link href="/products" className="btn-ghost">
+                        Zobacz w sklepie
+                      </Link>
+                    </>
+                  )}
+                </div>
+              </Reveal>
+
+              <Reveal delay={0.38}>
+                <figure className="relative mt-12 flex aspect-[3/4] w-72 items-center justify-center overflow-hidden border border-line bg-white">
+                  <Image
+                    src="/images/laviera-flakon.jpg"
+                    alt="LAVIÉRA — flakon Eau de Parfum 50 ml"
+                    width={1024}
+                    height={1536}
+                    className="h-full w-full object-contain"
+                  />
+                </figure>
+              </Reveal>
+            </div>
+            {/* Prawa kolumna: miejsce na flakon 3D (scroll story) */}
           </div>
         </div>
       </section>
