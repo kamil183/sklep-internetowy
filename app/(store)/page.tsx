@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import ProductCard from "@/components/ProductCard";
-import HeroSky from "@/components/HeroSky";
+import PerfumeBottle3D from "@/components/3d/PerfumeBottle3D";
 import Reveal from "@/components/Reveal";
 
 export const revalidate = 0; // always show current stock/prices from the DB
@@ -57,10 +57,16 @@ export default async function HomePage() {
   ]);
 
   return (
-    <div>
+    <>
+      {/* FLAKON 3D — fixed pod treścią; obraca się i przemieszcza w rytmie
+          sekcji oznaczonych data-bottle (scroll story). Bez WebGL strona działa bez 3D. */}
+      <div className="fixed inset-0 z-0" aria-hidden="true">
+        <PerfumeBottle3D />
+      </div>
+
+      <div className="relative z-10">
       {/* ============================ HERO ============================ */}
-      <section className="relative flex min-h-screen items-end overflow-hidden pb-24 pt-32">
-        <HeroSky />
+      <section data-bottle className="relative flex min-h-screen items-end overflow-hidden pb-24 pt-32">
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-bg via-bg/15 to-transparent" />
 
         <div className="relative mx-auto w-full max-w-7xl px-6 md:px-10">
@@ -95,7 +101,7 @@ export default async function HomePage() {
       </section>
 
       {/* ======================= HISTORIA ZAPACHU ======================= */}
-      <section id="historia" className="relative py-32">
+      <section id="historia" data-bottle className="relative py-32">
         <div className="mx-auto max-w-7xl px-6 md:px-10">
           <div className="max-w-xl">
             <Reveal>
@@ -133,7 +139,7 @@ export default async function HomePage() {
       </section>
 
       {/* ============================ FLAKON ============================ */}
-      <section id="flakon" className="relative py-8 pb-32">
+      <section id="flakon" data-bottle className="relative py-8 pb-32">
         <div className="mx-auto grid max-w-7xl gap-12 px-6 md:px-10 lg:grid-cols-2">
           <div>
             <Reveal>
@@ -184,7 +190,7 @@ export default async function HomePage() {
       </section>
 
       {/* ============================ CECHY ============================ */}
-      <section id="cechy" className="relative py-24">
+      <section id="cechy" data-bottle className="relative py-24">
         <div className="mx-auto max-w-7xl px-6 md:px-10">
           <div className="text-center">
             <Reveal>
@@ -215,7 +221,7 @@ export default async function HomePage() {
       </section>
 
       {/* ================== PRODUKTY + KATEGORIE (BAZA) ================== */}
-      <section className="mx-auto max-w-7xl px-6 md:px-10 py-20">
+      <section data-bottle className="mx-auto max-w-7xl px-6 md:px-10 py-20">
         <div className="mb-8 flex items-end justify-between">
           <div>
             <p className="section-label">Sklep</p>
@@ -266,7 +272,7 @@ export default async function HomePage() {
       )}
 
       {/* ============================== CTA ============================== */}
-      <section className="mx-auto max-w-7xl px-6 md:px-10 py-24 text-center border-t border-line">
+      <section data-bottle className="mx-auto max-w-7xl px-6 md:px-10 py-24 text-center border-t border-line">
         <Reveal>
           <p className="section-label mx-auto justify-center before:hidden">
             <span className="h-px w-10 bg-gold" />
@@ -289,6 +295,7 @@ export default async function HomePage() {
           </div>
         </Reveal>
       </section>
-    </div>
+      </div>
+    </>
   );
 }

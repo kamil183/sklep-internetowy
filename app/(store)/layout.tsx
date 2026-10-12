@@ -1,13 +1,21 @@
 import StoreNav from "@/components/StoreNav";
+import HeroSky from "@/components/HeroSky";
 
 export default function StoreLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
+      {/* TŁO NA CAŁĄ STRONĘ — wideo nieba jako warstwa fixed pod całą treścią sklepu. */}
+      <div className="fixed inset-0 z-0" aria-hidden="true">
+        <HeroSky />
+        {/* Przyciemnienie — tekst i karty czytelne na tle ruchomego nieba. */}
+        <div className="absolute inset-0 bg-bg/55" />
+      </div>
+
       <StoreNav />
-      <main>{children}</main>
+      <main className="relative z-10">{children}</main>
 
       {/* Stopka pełni też rolę sekcji kontaktowej (#kontakt). Dane kontaktowe pozostają bez zmian. */}
-      <footer id="kontakt" className="relative z-10 border-t border-line bg-bg mt-20">
+      <footer id="kontakt" className="relative z-10 mt-20 border-t border-line bg-bg/85 backdrop-blur-lg">
         <div className="mx-auto grid max-w-7xl gap-12 px-6 py-16 md:grid-cols-3 md:px-10">
           <div>
             <p className="font-display text-xl tracking-[0.35em] text-cream">ZODARA PARFUMS</p>
