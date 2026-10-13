@@ -36,10 +36,10 @@ const BODY_R = 0.1;
  * Płyn: dolna krawędź TUŻ NAD strefą napisów (jak na zdjęciu —
  * pod płynem jest czyste, grube szkło z „EAU DE PARFUM" / „50 ml").
  */
-const LIQUID_W = 1.28;
-const LIQUID_H = 1.1;
-const LIQUID_D = 0.6;
-const LIQUID_BOTTOM = -0.42;
+const LIQUID_W = 1.36;
+const LIQUID_H = 1.32;
+const LIQUID_D = 0.68;
+const LIQUID_BOTTOM = -0.6;
 const LIQUID_Y = LIQUID_BOTTOM + LIQUID_H / 2;
 
 /** Napisy na przedniej szybie (tuż przy powierzchni szkła). */
@@ -194,12 +194,12 @@ export function PlaceholderBottle({ lowPower }: { lowPower: boolean }) {
     [],
   );
   const liquidGeo = useMemo(
-    () => extrudedBox(LIQUID_W, LIQUID_H, LIQUID_D, 0.14, 0.05),
+    () => extrudedBox(LIQUID_W, LIQUID_H, LIQUID_D, 0.09, 0.045),
     [],
   );
   // Tafla płynu — cienka, w kolorze płynu (subtelny menisk, nie „plastikowa nakrywka")
   const surfaceGeo = useMemo(() => {
-    const geo = extrudedBox(LIQUID_W - 0.02, LIQUID_D - 0.02, 0.02, 0.13, 0);
+    const geo = extrudedBox(LIQUID_W - 0.02, LIQUID_D - 0.02, 0.02, 0.085, 0);
     geo.rotateX(-Math.PI / 2);
     return geo;
   }, []);
@@ -301,14 +301,14 @@ export function PlaceholderBottle({ lowPower }: { lowPower: boolean }) {
   // przezroczysty na tyle, by światło przechodziło przez całą objętość.
   const liquid = (
     <meshPhysicalMaterial
-      color="#F0DBA2"
-      roughness={0.12}
+      color="#F6EAC8"
+      roughness={0.08}
       metalness={0}
-      clearcoat={0.8}
-      clearcoatRoughness={0.12}
-      envMapIntensity={1.4}
+      clearcoat={0.9}
+      clearcoatRoughness={0.08}
+      envMapIntensity={1.7}
       transparent
-      opacity={0.8}
+      opacity={0.82}
     />
   );
 
@@ -346,7 +346,7 @@ export function PlaceholderBottle({ lowPower }: { lowPower: boolean }) {
       {/* Tafla płynu — subtelny menisk w kolorze cieczy */}
       <mesh geometry={surfaceGeo} position={[0, LIQUID_Y + LIQUID_H / 2, 0]}>
         <meshPhysicalMaterial
-          color="#F6E7BE"
+          color="#FBF3DC"
           roughness={0.06}
           metalness={0}
           clearcoat={1}
@@ -362,8 +362,8 @@ export function PlaceholderBottle({ lowPower }: { lowPower: boolean }) {
         <planeGeometry args={[1.32, 0.66]} />
         {ink(logoTex)}
       </mesh>
-      <mesh position={[0, -0.66, FRONT_Z]}>
-        <planeGeometry args={[1.0, 0.5]} />
+      <mesh position={[0, -0.77, FRONT_Z]}>
+        <planeGeometry args={[0.92, 0.4]} />
         {ink(bottomTex)}
       </mesh>
 
@@ -392,7 +392,7 @@ export function PlaceholderBottle({ lowPower }: { lowPower: boolean }) {
       {/* Zakrętka (animowana scrollem) — wysoki, polerowany cylinder */}
       <group ref={capRef} position={[0, CAP_BASE_Y, 0]}>
         <mesh position={[0, 0.34, 0]}>
-          <cylinderGeometry args={[0.33, 0.335, 0.68, 64]} />
+          <cylinderGeometry args={[0.33, 0.335, 0.74, 64]} />
           {gold(0.12)}
         </mesh>
         {/* Cienki jaśniejszy rant u dołu — miejsce, w którym kapelusz łapie światło */}
@@ -401,7 +401,7 @@ export function PlaceholderBottle({ lowPower }: { lowPower: boolean }) {
           {gold(0.2, "#E6C689")}
         </mesh>
         {/* Wieńczący dysk */}
-        <mesh position={[0, 0.688, 0]}>
+        <mesh position={[0, 0.748, 0]}>
           <cylinderGeometry args={[0.325, 0.33, 0.04, 64]} />
           {gold(0.16, "#E9CD97")}
         </mesh>

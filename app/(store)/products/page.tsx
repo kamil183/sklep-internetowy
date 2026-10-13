@@ -15,8 +15,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: { c
 
   return (
     <div className="max-w-6xl mx-auto px-6 md:px-10 pt-32 pb-20">
-      <h1 className="font-display text-3xl md:text-4xl mb-10">Produkty</h1>
-      <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6">
+      <h1 className="font-display text-3xl md:text-4xl mb-10">Produkt</h1>
+      <div className="grid gap-6 md:max-w-md">
         {products.map((p) => (
           <ProductCard
             key={p.id}
@@ -30,7 +30,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: { c
             }}
           />
         ))}
-        {products.length === 0 && <p className="text-creamdim text-sm">Brak produktów do wyświetlenia.</p>}
+        {products.length === 0 && <p className="text-creamdim text-sm">Brak produktu do wyświetlenia.</p>}
       </div>
     </div>
   );

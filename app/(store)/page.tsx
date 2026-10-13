@@ -47,15 +47,8 @@ const COPY = {
 } as const;
 
 export default async function HomePage() {
-  const [featured, categories, product] = await Promise.all([
-    prisma.product.findMany({
-      where: { isActive: true },
-      include: { images: { orderBy: { position: "asc" }, take: 1 } },
-      orderBy: { createdAt: "desc" },
-      take: 6,
-    }),
-    prisma.category.findMany({ include: { _count: { select: { products: true } } } }),
-    // Sekcja sprzedażowa: sklep ma jeden produkt — pobieramy go na stałe.
+  // Sklep ma jeden produkt — pobieramy go na stałe.
+  const [product] = await Promise.all([
     prisma.product.findFirst({
       where: { isActive: true },
       include: { images: { orderBy: { position: "asc" } } },
@@ -292,56 +285,51 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ================== PRODUKTY + KATEGORIE (BAZA) ================== */}
+      {/* ================== PRODUKT (SKLEP JEDNOPRODUKTOWY) ==================
+          Sklep sprzedaje jeden produkt, więc zamiast siatki „wyróżnionych
+          produktów" pokazujemy pojedynczy kafelek z odnośnikiem do strony. */}
       <section data-bottle className="mx-auto max-w-7xl px-6 md:px-10 py-20">
-        <div className="mb-8 flex items-end justify-between">
-          <div>
-            <p className="section-label">Sklep</p>
-            <h2 className="font-display text-2xl md:text-3xl">Wyróżnione produkty</h2>
-          </div>
-          <Link href="/products" className="text-sm text-gold hover:underline">
-            Zobacz wszystkie →
+        <div className="mb-10">
+          <p className="section-label">Sklep</p>
+          <h2 className="font-display text-2xl md:text-3xl">Jeden zapach. Jeden flakon.</h2>
+        </div>
+
+        {product ? (
+          <Link
+            href={`/products/${product.slug}`}
+            className="card group grid items-center gap-8 p-6 md:grid-cols-[minmax(0,320px)_1fr] md:p-10"
+          >
+            <figure className="relative aspect-[3/4] overflow-hidden border border-line bg-white">
+              <Image
+                src={product.images[0]?.url ?? "/images/laviera-flakon.jpg"}
+                alt={product.name}
+                width={1024}
+                height={1536}
+                className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.03]"
+              />
+            </figure>
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.35em] text-gold">
+                Eau de Parfum · 50 ml
+              </p>
+              <h3 className="mt-3 font-display text-4xl font-light md:text-5xl">
+                {product.name}
+              </h3>
+              <p className="mt-4 max-w-md text-sm leading-relaxed text-creamdim">
+                {COPY.character}
+              </p>
+              <p className="mt-6 font-display text-3xl text-gold">
+                {(product.priceCents / 100).toFixed(2)} zł
+              </p>
+              <span className="btn-primary mt-8 inline-block">Zobacz produkt</span>
+            </div>
           </Link>
-        </div>
-
-        <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3">
-          {featured.map((p) => (
-            <ProductCard
-              key={p.id}
-              product={{
-                id: p.id,
-                slug: p.slug,
-                name: p.name,
-                priceCents: p.priceCents,
-                stock: p.stock,
-                imageUrl: p.images[0]?.url ?? "/images/laviera-flakon.jpg",
-              }}
-            />
-          ))}
-          {featured.length === 0 && (
-            <p className="col-span-full text-sm text-creamdim">
-              Brak produktów w bazie — dodaj pierwszy w /admin/products/new.
-            </p>
-          )}
-        </div>
+        ) : (
+          <p className="text-sm text-creamdim">
+            Produkt właśnie powstaje — wróć niedługo albo napisz do nas przez kontakt w stopce.
+          </p>
+        )}
       </section>
-
-      {categories.length > 0 && (
-        <section className="mx-auto max-w-7xl px-6 md:px-10 py-16 border-t border-line">
-          <h2 className="font-display text-2xl mb-8">Kategorie</h2>
-          <div className="flex flex-wrap gap-3">
-            {categories.map((c) => (
-              <Link
-                key={c.id}
-                href={`/products?category=${c.slug}`}
-                className="card px-5 py-3 text-sm transition-colors hover:border-gold/50"
-              >
-                {c.name} <span className="text-creamdim">({c._count.products})</span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* ============================== CTA ============================== */}
       <section data-bottle className="mx-auto max-w-7xl px-6 md:px-10 py-24 text-center border-t border-line">
@@ -358,8 +346,8 @@ export default async function HomePage() {
         </Reveal>
         <Reveal delay={0.2}>
           <div className="mt-10 flex flex-wrap justify-center gap-4">
-            <Link href="/products" className="btn-primary">
-              Zobacz produkty
+            <Link href={product ? `/products/${product.slug}` : "/products"} className="btn-primary">
+              Zobacz produkt
             </Link>
             <Link href="/cart" className="btn-ghost">
               Przejdź do koszyka

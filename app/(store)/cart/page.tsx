@@ -35,7 +35,7 @@ export default function CartPage() {
     return (
       <div className="max-w-3xl mx-auto px-6 pt-40 pb-24 text-center">
         <h1 className="font-display text-2xl mb-4">Twój koszyk jest pusty</h1>
-        <Link href="/products" className="btn-primary inline-block">Zobacz produkty</Link>
+        <Link href="/products" className="btn-primary inline-block">Zobacz produkt</Link>
       </div>
     );
   }
@@ -83,7 +83,7 @@ export default function CartPage() {
           <p className="text-sm text-red-400 mb-4">{discountResult.error}</p>
         )}
         <div className="flex justify-between text-sm text-creamdim py-1">
-          <span>Suma produktów</span>
+          <span>Suma</span>
           <span>{(subtotalCents / 100).toFixed(2)} zł</span>
         </div>
         {discountCents > 0 && (
