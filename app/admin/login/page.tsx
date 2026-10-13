@@ -28,7 +28,7 @@ export default function AdminLoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-bg px-6">
       <form onSubmit={handleSubmit} className="card w-full max-w-sm p-8">
         <h1 className="font-display text-2xl mb-1">Panel administracyjny</h1>
-        <p className="text-creamdim text-sm mb-8">Atelier No.7</p>
+        <p className="text-creamdim text-sm mb-8">ZODARA PARFUMS</p>
         <div className="space-y-4 mb-6">
           <input className="input-field" type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} required />
           <input className="input-field" type="password" placeholder="Hasło" value={password} onChange={(e) => setPassword(e.target.value)} required />

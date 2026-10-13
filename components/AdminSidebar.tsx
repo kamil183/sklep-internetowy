@@ -20,7 +20,7 @@ export default function AdminSidebar() {
   return (
     <aside className="w-60 shrink-0 bg-panel border-r border-line min-h-screen p-6 flex flex-col">
       <div className="font-display text-lg mb-10">
-        ATELIER <span className="text-amber">No.7</span>
+        ZODARA <span className="text-amber">PARFUMS</span>
         <div className="text-xs text-creamdim font-sans mt-0.5">Panel administracyjny</div>
       </div>
       <nav className="flex-1 space-y-1">
