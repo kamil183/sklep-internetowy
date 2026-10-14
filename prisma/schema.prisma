@@ -38,19 +38,19 @@ model Category {
 }
 
 model Product {
-  id          String       @id @default(cuid())
+  id          String         @id @default(cuid())
   name        String
-  slug        String       @unique
+  slug        String         @unique
   description String
   priceCents  Int // stored in grosze (cents) to avoid float rounding issues
   images      ProductImage[]
   categoryId  String?
-  category    Category?    @relation(fields: [categoryId], references: [id])
-  stock       Int          @default(0)
-  isActive    Boolean      @default(true)
+  category    Category?      @relation(fields: [categoryId], references: [id])
+  stock       Int            @default(0)
+  isActive    Boolean        @default(true)
   orderItems  OrderItem[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
   @@index([isActive])
 }
@@ -108,40 +108,40 @@ enum DeliveryMethod {
 }
 
 model Order {
-  id                String         @id @default(cuid())
-  orderNumber       String         @unique // human-facing, e.g. "AT-2026-000123"
-  customerId        String
-  customer          Customer       @relation(fields: [customerId], references: [id])
+  id          String   @id @default(cuid())
+  orderNumber String   @unique // human-facing, e.g. "AT-2026-000123"
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
 
-  items             OrderItem[]
+  items OrderItem[]
 
-  subtotalCents     Int
-  discountCents     Int            @default(0)
-  shippingCents     Int
-  totalCents        Int
+  subtotalCents Int
+  discountCents Int @default(0)
+  shippingCents Int
+  totalCents    Int
 
-  discountCodeId    String?
-  discountCode      DiscountCode?  @relation(fields: [discountCodeId], references: [id])
+  discountCodeId String?
+  discountCode   DiscountCode? @relation(fields: [discountCodeId], references: [id])
 
-  deliveryMethod    DeliveryMethod
-  inpostLockerCode  String? // paczkomat point selected via Geowidget, e.g. "WAW01A"
-  shippingAddress   Json? // used for courier delivery
+  deliveryMethod   DeliveryMethod
+  inpostLockerCode String? // paczkomat point selected via Geowidget, e.g. "WAW01A"
+  shippingAddress  Json? // used for courier delivery
 
-  status            OrderStatus    @default(NEW)
-  paymentStatus     PaymentStatus  @default(PENDING)
+  status        OrderStatus   @default(NEW)
+  paymentStatus PaymentStatus @default(PENDING)
 
-  payment           Payment?
-  shipment          Shipment?
-  discountUsage     DiscountUsage?
+  payment       Payment?
+  shipment      Shipment?
+  discountUsage DiscountUsage?
 
   // Attribution — filled in later once analytics/UTM tracking is wired up
-  trafficSource     String? // "google" | "instagram" | "ads" | "direct" | "other"
-  utmSource         String?
-  utmMedium         String?
-  utmCampaign       String?
+  trafficSource String? // "google" | "instagram" | "ads" | "direct" | "other"
+  utmSource     String?
+  utmMedium     String?
+  utmCampaign   String?
 
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status])
   @@index([paymentStatus])
@@ -161,19 +161,19 @@ model OrderItem {
 // ---------- PAYMENTS (Stripe) ----------
 
 model Payment {
-  id                    String        @id @default(cuid())
-  orderId               String        @unique
-  order                 Order         @relation(fields: [orderId], references: [id])
-  provider              String        @default("stripe")
-  stripePaymentIntentId String?       @unique
-  stripeCheckoutSessionId String?     @unique
-  status                PaymentStatus @default(PENDING)
-  method                String? // "blik" | "card" | "p24" | "apple_pay" | "google_pay"
-  amountCents           Int
-  currency              String        @default("pln")
-  rawWebhookPayload      Json? // last webhook event received, for auditing
-  createdAt             DateTime      @default(now())
-  confirmedAt           DateTime?
+  id                      String        @id @default(cuid())
+  orderId                 String        @unique
+  order                   Order         @relation(fields: [orderId], references: [id])
+  provider                String        @default("stripe")
+  stripePaymentIntentId   String?       @unique
+  stripeCheckoutSessionId String?       @unique
+  status                  PaymentStatus @default(PENDING)
+  method                  String? // "blik" | "card" | "p24" | "apple_pay" | "google_pay"
+  amountCents             Int
+  currency                String        @default("pln")
+  rawWebhookPayload       Json? // last webhook event received, for auditing
+  createdAt               DateTime      @default(now())
+  confirmedAt             DateTime?
 }
 
 // ---------- DISCOUNTS ----------
@@ -184,18 +184,18 @@ enum DiscountType {
 }
 
 model DiscountCode {
-  id              String         @id @default(cuid())
-  code            String         @unique
-  type            DiscountType
-  value           Int // percent (0-100) or amount in cents, depending on `type`
-  startsAt        DateTime?
-  endsAt          DateTime?
-  maxUses         Int?
-  minOrderCents   Int?
-  isActive        Boolean        @default(true)
-  usages          DiscountUsage[]
-  orders          Order[]
-  createdAt       DateTime       @default(now())
+  id            String          @id @default(cuid())
+  code          String          @unique
+  type          DiscountType
+  value         Int // percent (0-100) or amount in cents, depending on `type`
+  startsAt      DateTime?
+  endsAt        DateTime?
+  maxUses       Int?
+  minOrderCents Int?
+  isActive      Boolean         @default(true)
+  usages        DiscountUsage[]
+  orders        Order[]
+  createdAt     DateTime        @default(now())
 }
 
 model DiscountUsage {
@@ -221,14 +221,33 @@ enum ShipmentStatus {
 }
 
 model Shipment {
-  id                String         @id @default(cuid())
-  orderId           String         @unique
-  order             Order          @relation(fields: [orderId], references: [id])
-  provider          String         @default("inpost")
-  inpostShipmentId  String? // ShipX shipment id, once created
-  trackingNumber    String?
-  labelUrl          String?
-  status            ShipmentStatus @default(NOT_CREATED)
-  lastSyncedAt      DateTime?
-  createdAt         DateTime       @default(now())
+  id               String         @id @default(cuid())
+  orderId          String         @unique
+  order            Order          @relation(fields: [orderId], references: [id])
+  provider         String         @default("inpost")
+  inpostShipmentId String? // ShipX shipment id, once created
+  trackingNumber   String?
+  labelUrl         String?
+  status           ShipmentStatus @default(NOT_CREATED)
+  lastSyncedAt     DateTime?
+  createdAt        DateTime       @default(now())
+}
+
+// ---------- NEWSLETTER ----------
+
+model NewsletterSubscriber {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  // RODO: pełny zapis zgody marketingowej
+  consentIp      String? // IP w momencie zapisu (dowód zgody)
+  consentAt      DateTime  @default(now()) // czas wyrażenia zgody
+  consentText    String // treść zgody, którą klient zaakceptował
+  // Potwierdzenie double opt-in: wysyłamy link aktyacyjny na maila.
+  confirmed      Boolean   @default(false)
+  confirmedAt    DateTime?
+  token          String    @unique @default(cuid()) // token do linku potwierdzenia/wypisu
+  source         String    @default("footer") // skąd przyszły: footer, checkout, popup…
+  // W trosce o RODO przechowujemy też informację o wypisie.
+  unsubscribedAt DateTime?
+  createdAt      DateTime  @default(now())
 }

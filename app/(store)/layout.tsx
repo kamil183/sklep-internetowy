@@ -1,4 +1,5 @@
 import StoreNav from "@/components/StoreNav";
+import NewsletterForm from "./newsletter-form";
 import HeroSky from "@/components/HeroSky";
 
 export default function StoreLayout({ children }: { children: React.ReactNode }) {
@@ -16,6 +17,22 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
 
       {/* Stopka pełni też rolę sekcji kontaktowej (#kontakt). Dane kontaktowe pozostają bez zmian. */}
       <footer id="kontakt" className="relative z-10 mt-20 border-t border-line bg-bg/85 backdrop-blur-lg">
+        {/* NEWSLETTER — zapis na powiadomienia o premierach (zgoda RODO). */}
+        <div className="mx-auto max-w-7xl border-b border-line px-6 py-10 md:px-10">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-md">
+              <h3 className="text-[11px] uppercase tracking-[0.3em] text-gold">Newsletter</h3>
+              <p className="mt-2 text-sm text-creamdim">
+                Pierwsza wiadomość o premierze LAVIÉRY, limitowanych edycjach i promocjach —
+                prosto na Twoją skrzynkę.
+              </p>
+            </div>
+            <div className="w-full max-w-md">
+              <NewsletterForm />
+            </div>
+          </div>
+        </div>
+
         <div className="mx-auto grid max-w-7xl gap-12 px-6 py-16 md:grid-cols-3 md:px-10">
           <div>
             <p className="font-display text-xl tracking-[0.35em] text-cream">ZODARA PARFUMS</p>
