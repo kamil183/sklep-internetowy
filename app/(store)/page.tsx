@@ -245,25 +245,39 @@ export default async function HomePage() {
               <Reveal delay={0.3}>
                 <div className="mt-10">
                   {product ? (
-                    <>
-                      <p className="mb-6 font-display text-3xl text-gold">
-                        {(product.priceCents / 100).toFixed(2)} zł
+                    <div className="card max-w-md p-8">
+                      <div className="flex items-baseline justify-between gap-6">
+                        <p className="font-display text-4xl text-gold">
+                          {(product.priceCents / 100).toFixed(2)} zł
+                        </p>
+                        <p className="text-xs text-creamdim">
+                          {product.stock > 0
+                            ? `${product.stock} szt. dostępnych`
+                            : "Wyprzedane"}
+                        </p>
+                      </div>
+                      <p className="mt-2 text-xs text-creamdim/70">
+                        Eau de Parfum · 50 ml · wysyłka InPost 12–16 zł
                       </p>
-                      <AddToCartForm
-                        productId={product.id}
-                        name={product.name}
-                        priceCents={product.priceCents}
-                        imageUrl={product.images[0]?.url ?? "/images/laviera-flakon.jpg"}
-                        stock={product.stock}
-                      />
-                    </>
+
+                      <div className="mt-8">
+                        <AddToCartForm
+                          productId={product.id}
+                          name={product.name}
+                          priceCents={product.priceCents}
+                          imageUrl={product.images[0]?.url ?? "/images/laviera-flakon.jpg"}
+                          stock={product.stock}
+                        />
+                      </div>
+
+                      <ul className="mt-8 space-y-2 border-t border-line pt-6 text-xs text-creamdim">
+                        <li>• Paczkomat 12 zł · kurier 16 zł — wybór przy kasie</li>
+                        <li>• Płatność: karta, BLIK, Przelewy24 (Stripe)</li>
+                        <li>• Wysyłka w 1–2 dni robocze · zwroty 14 dni</li>
+                      </ul>
+                    </div>
                   ) : (
-                    <>
-                      <p className="mb-6 font-display text-3xl text-creamdim">Wkrótce w sprzedaży</p>
-                      <Link href="/products" className="btn-ghost">
-                        Zobacz w sklepie
-                      </Link>
-                    </>
+                    <p className="font-display text-3xl text-creamdim">Wkrótce w sprzedaży</p>
                   )}
                 </div>
               </Reveal>
@@ -346,8 +360,8 @@ export default async function HomePage() {
         </Reveal>
         <Reveal delay={0.2}>
           <div className="mt-10 flex flex-wrap justify-center gap-4">
-            <Link href={product ? `/products/${product.slug}` : "/products"} className="btn-primary">
-              Zobacz produkt
+            <Link href="#produkt" className="btn-primary">
+              Kup LAVIÉRĘ
             </Link>
             <Link href="/cart" className="btn-ghost">
               Przejdź do koszyka
