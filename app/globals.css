@@ -26,15 +26,15 @@
     width: 10px;
   }
   ::-webkit-scrollbar-track {
-    background: #0b0b0c;
+    background: #efe8dc;
   }
   ::-webkit-scrollbar-thumb {
-    background: #2a2a2e;
-    border: 2px solid #0b0b0c;
+    background: #c9bda9;
+    border: 2px solid #efe8dc;
     border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #c9a96a;
+    background: #a86f4c;
   }
 }
 
@@ -85,8 +85,8 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(75% 50% at 50% 12%, rgba(163, 181, 255, 0.2) 0%, rgba(163, 181, 255, 0) 65%),
-    linear-gradient(180deg, #161a33 0%, #1a1b3d 30%, #191634 52%, #0b0b0c 74%);
+    radial-gradient(75% 50% at 50% 12%, rgba(255, 214, 190, 0.45) 0%, rgba(255, 214, 190, 0) 65%),
+    linear-gradient(180deg, #8fa7c9 0%, #c9a8b8 32%, #e8b7a5 56%, #f6f1e9 82%);
 }
 
 .hero-sky-video {
@@ -104,13 +104,13 @@
   position: absolute;
   inset: 0;
   opacity: 0;
-  background: #0b0b0c;
+  background: #f6f1e9;
 }
 
 .hero-sky-veil {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(8, 8, 18, 0.38) 0%, rgba(8, 8, 18, 0) 34%),
-    linear-gradient(0deg, rgba(8, 8, 18, 0.3) 0%, rgba(8, 8, 18, 0) 26%);
+    linear-gradient(180deg, rgba(246, 241, 233, 0.42) 0%, rgba(246, 241, 233, 0) 34%),
+    linear-gradient(0deg, rgba(246, 241, 233, 0.35) 0%, rgba(246, 241, 233, 0) 26%);
 }

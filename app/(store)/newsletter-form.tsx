@@ -70,7 +70,7 @@ export default function NewsletterForm() {
           required
           checked={consent}
           onChange={(e) => setConsent(e.target.checked)}
-          className="mt-0.5 h-3.5 w-3.5 flex-none accent-[#c9a864]"
+          className="mt-0.5 h-3.5 w-3.5 flex-none accent-[#a86f4c]"
         />
         <span>
           Zapisuję się do newslettera ZODARA PARFUMS i akceptuję otrzymywanie informacji o
