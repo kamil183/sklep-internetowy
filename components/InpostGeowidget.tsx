@@ -36,6 +36,8 @@ export default function InpostGeowidget({ onSelect }: { onSelect: (pointCode: st
     widget.setAttribute("language", "pl");
     widget.setAttribute("config", "parcelCollect");
     widget.setAttribute("onpoint", "afterPointSelected");
+    // The custom element has no intrinsic height (per InPost docs) — size it explicitly.
+    widget.style.cssText = "display:block;width:100%;height:480px";
 
     (window as any).afterPointSelected = (point: { name: string; [k: string]: unknown }) => {
       onSelectRef.current(String(point?.name ?? point));
@@ -72,7 +74,7 @@ export default function InpostGeowidget({ onSelect }: { onSelect: (pointCode: st
         strategy="afterInteractive"
         onReady={() => setSdkReady(true)}
       />
-      <div ref={hostRef} style={{ width: "100%", minHeight: 420 }} />
+      <div ref={hostRef}  />
     </>
   );
 }
