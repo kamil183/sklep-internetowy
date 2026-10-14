@@ -272,7 +272,7 @@ export default async function HomePage() {
 
                       <ul className="mt-8 space-y-2 border-t border-line pt-6 text-xs text-creamdim">
                         <li>• Paczkomat 12 zł · kurier 16 zł — wybór przy kasie</li>
-                        <li>• Płatność: karta, BLIK, Przelewy24 (Stripe)</li>
+                        <li>• Płatność: karta, BLIK, Przelewy24</li>
                         <li>• Wysyłka w 1–2 dni robocze · zwroty 14 dni</li>
                       </ul>
                     </div>

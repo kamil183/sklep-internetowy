@@ -135,8 +135,8 @@ function CheckoutForm() {
         </div>
 
         <p className="text-xs text-creamdim mb-4">
-          Płatność BLIK, Przelewy24, kartą, Apple Pay lub Google Pay — realizowana na bezpiecznej stronie Stripe.
-          Zamówienie otrzyma status „Opłacone” dopiero po potwierdzeniu płatności przez Stripe.
+          Płatność BLIK, Przelewy24, kartą, Apple Pay lub Google Pay — realizowana na bezpiecznej stronie operatora płatności.
+          Zamówienie otrzyma status „Opłacone” dopiero po potwierdzeniu płatności.
         </p>
 
         {error && <p className="text-sm text-red-400 mb-4">{error}</p>}
