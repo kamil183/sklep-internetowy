@@ -13,7 +13,7 @@ export default function ProductCard({ product }: { product: ProductCardData }) {
   const outOfStock = product.stock <= 0;
   return (
     <Link href={`/products/${product.slug}`} className="card group block overflow-hidden transition-colors hover:border-gold/50">
-      <div className="aspect-square overflow-hidden bg-white">
+      <div className="aspect-square overflow-hidden bg-bg2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={product.imageUrl}

@@ -21,7 +21,7 @@ export default function HeroSky() {
       />
       <div className="hero-sky-veil" />
       <div
-        className="absolute inset-x-0 bottom-0 h-40"
+        className="absolute inset-x-0 bottom-0 h-28"
         style={{ background: "linear-gradient(180deg, rgba(246,241,233,0) 0%, #f6f1e9 100%)" }}
       />
     </div>

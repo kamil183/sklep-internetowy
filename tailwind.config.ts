@@ -14,7 +14,7 @@ const config: Config = {
       colors: {
         bg: "#f6f1e9", // cieply bez — tlo strony
         bg2: "#efe8dc", // ciemniejszy bez (hover)
-        panel: "rgba(255, 252, 246, 0.78)", // prawie biale, pprzezroczyste karty
+        panel: "rgba(243, 234, 217, 0.85)", // bezowe, pprzezroczyste karty
         line: "rgba(74, 62, 48, 0.16)", // delikatna ciepla ramka na jasnym tle
         cream: "#2f2721", // tekst glowny — cieply ciemny braz
         creamdim: "#7b7062", // tekst drugorzedny — stonowany

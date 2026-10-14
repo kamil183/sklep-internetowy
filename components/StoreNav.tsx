@@ -18,7 +18,7 @@ export default function StoreNav() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-line bg-bg/85 backdrop-blur-lg">
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-line bg-bg2/95 backdrop-blur-lg">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 md:px-10">
         <Link href="/" className="font-display text-lg tracking-[0.4em] text-cream transition hover:text-gold md:text-xl">
           ZODARA
@@ -72,7 +72,7 @@ export default function StoreNav() {
       </div>
 
       {open && (
-        <nav aria-label="Menu mobilne" className="border-t border-line bg-bg/95 backdrop-blur-lg lg:hidden">
+        <nav aria-label="Menu mobilne" className="border-t border-line bg-bg2/95 backdrop-blur-lg lg:hidden">
           <div className="flex flex-col gap-1 px-6 py-4">
             {NAV_LINKS.map((link) => (
               <Link

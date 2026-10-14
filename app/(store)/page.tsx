@@ -173,7 +173,7 @@ export default async function HomePage() {
               ].map((img) => (
                 <figure
                   key={img.src}
-                  className="relative flex aspect-[3/4] items-center justify-center overflow-hidden border border-line bg-white"
+                  className="relative flex aspect-[3/4] items-center justify-center overflow-hidden border border-line bg-bg2"
                 >
                   <Image
                     src={img.src}
@@ -283,7 +283,7 @@ export default async function HomePage() {
               </Reveal>
 
               <Reveal delay={0.38}>
-                <figure className="relative mt-12 flex aspect-[3/4] w-72 items-center justify-center overflow-hidden border border-line bg-white">
+                <figure className="relative mt-12 flex aspect-[3/4] w-72 items-center justify-center overflow-hidden border border-line bg-bg2">
                   <Image
                     src="/images/laviera-flakon.jpg"
                     alt="LAVIÉRA — flakon Eau de Parfum 50 ml"
@@ -313,7 +313,7 @@ export default async function HomePage() {
             href={`/products/${product.slug}`}
             className="card group grid items-center gap-8 p-6 md:grid-cols-[minmax(0,320px)_1fr] md:p-10"
           >
-            <figure className="relative aspect-[3/4] overflow-hidden border border-line bg-white">
+            <figure className="relative aspect-[3/4] overflow-hidden border border-line bg-bg2">
               <Image
                 src={product.images[0]?.url ?? "/images/laviera-flakon.jpg"}
                 alt={product.name}

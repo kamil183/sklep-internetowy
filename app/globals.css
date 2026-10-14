@@ -96,8 +96,8 @@
   height: 100%;
   object-fit: cover;
   object-position: center 42%;
-  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 58%, rgba(0, 0, 0, 0.45) 72%, rgba(0, 0, 0, 0) 84%);
-  mask-image: linear-gradient(180deg, #000 0%, #000 58%, rgba(0, 0, 0, 0.45) 72%, rgba(0, 0, 0, 0) 84%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 72%, rgba(0, 0, 0, 0.5) 84%, rgba(0, 0, 0, 0) 95%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 72%, rgba(0, 0, 0, 0.5) 84%, rgba(0, 0, 0, 0) 95%);
 }
 
 .hero-sky-scrim {
@@ -112,5 +112,5 @@
   inset: 0;
   background:
     linear-gradient(180deg, rgba(246, 241, 233, 0.42) 0%, rgba(246, 241, 233, 0) 34%),
-    linear-gradient(0deg, rgba(246, 241, 233, 0.35) 0%, rgba(246, 241, 233, 0) 26%);
+    linear-gradient(0deg, rgba(246, 241, 233, 0.16) 0%, rgba(246, 241, 233, 0) 24%);
 }

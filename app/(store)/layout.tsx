@@ -9,7 +9,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
       <div className="fixed inset-0 z-0" aria-hidden="true">
         <HeroSky />
         {/* Przyciemnienie — tekst i karty czytelne na tle ruchomego nieba. */}
-        <div className="absolute inset-0 bg-bg/30" />
+        <div className="absolute inset-0 bg-bg/20" />
       </div>
 
       <StoreNav />
