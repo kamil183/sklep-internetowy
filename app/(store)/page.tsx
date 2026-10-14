@@ -256,7 +256,7 @@ export default async function HomePage() {
                             : "Wyprzedane"}
                         </p>
                       </div>
-                      <p className="mt-2 text-xs text-creamdim/70">
+                      <p className="mt-2 text-xs text-creamdim">
                         Eau de Parfum · 50 ml · wysyłka InPost 12–16 zł
                       </p>
 
@@ -361,7 +361,7 @@ export default async function HomePage() {
         <Reveal delay={0.2}>
           <div className="mt-10 flex flex-wrap justify-center gap-4">
             <Link href="#produkt" className="btn-primary">
-              Kup LAVIÉRĘ
+              Kup produkt
             </Link>
             <Link href="/cart" className="btn-ghost">
               Przejdź do koszyka

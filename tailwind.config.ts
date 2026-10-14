@@ -17,13 +17,13 @@ const config: Config = {
         panel: "rgba(243, 234, 217, 0.85)", // bezowe, pprzezroczyste karty
         line: "rgba(74, 62, 48, 0.16)", // delikatna ciepla ramka na jasnym tle
         cream: "#2f2721", // tekst glowny — cieply ciemny braz
-        creamdim: "#7b7062", // tekst drugorzedny — stonowany
-        amber: "#a86f4c", // akcent — miedziano-rozowy (pasuje do zachodu)
+        creamdim: "#5c5245", // tekst drugorzedny — stonowany
+        amber: "#8f5c39", // akcent — miedziano-rozowy (pasuje do zachodu)
         amberdim: "#8a5a3c",
         ink: "#2f2721",
         inksoft: "#3b322a",
-        gold: "#a86f4c",
-        gold300: "#c99272",
+        gold: "#8f5c39",
+        gold300: "#a86f4c",
       },
       fontFamily: {
         display: ["var(--font-cormorant)", "serif"],

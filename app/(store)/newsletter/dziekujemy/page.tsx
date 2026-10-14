@@ -9,7 +9,7 @@ export default function NewsletterDziekujemy() {
         Twój adres jest na liście ZODARA PARFUMS. Podpowiemy Ci o premierze LAVIÉRY,
         limitowanych edycjach i cichych przecenach — zawsze krótko i tylko o tym, co się dzieje.
       </p>
-      <p className="mt-3 text-sm text-creamdim/70">
+      <p className="mt-3 text-sm text-creamdim">
         Zgoda jest dobrowolna; wypiszesz się jednym klikiem, linkiem w każdej wiadomości.
       </p>
       <a

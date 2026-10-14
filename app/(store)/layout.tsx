@@ -69,7 +69,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
         <div className="border-t border-line">
           <div className="mx-auto flex max-w-7xl flex-col gap-2 px-6 py-6 text-xs text-creamdim md:flex-row md:items-center md:justify-between md:px-10">
             <p>© {new Date().getFullYear()} ZODARA PARFUMS · LAVIÉRA</p>
-            <p className="text-creamdim/70">Made by Webilo</p>
+            <p className="text-creamdim">Made by Webilo</p>
           </div>
         </div>
       </footer>
