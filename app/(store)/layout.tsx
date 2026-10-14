@@ -48,14 +48,11 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
             <h3 className="mb-4 text-[11px] uppercase tracking-[0.3em] text-gold">Kontakt</h3>
             <ul className="space-y-2 text-sm text-creamdim">
               <li>
-                <a href="mailto:lauraludef11@icloud.com" className="transition hover:text-gold">
-                  lauraludef11@icloud.com
+                <a href="mailto:zodaraparfums@gmail.com" className="transition hover:text-gold">
+                  zodaraparfums@gmail.com
                 </a>
               </li>
               <li>
-                <a href="tel:+48506262674" className="transition hover:text-gold">
-                  +48 506 262 674
-                </a>
               </li>
             </ul>
           </div>
