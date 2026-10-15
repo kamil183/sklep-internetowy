@@ -98,3 +98,74 @@ export async function deleteProduct(productId: string) {
   revalidatePath("/admin/products");
   revalidatePath("/products");
 }
+
+/** Szybka edycja z dashboardu: cena, stan magazynowy i glowne zdjecie (pierwsze w galerii). */
+export async function quickUpdateProduct(formData: FormData) {
+  "use server";
+  await requireAdmin();
+
+  const productId = String(formData.get("productId") ?? "");
+  const priceRaw = String(formData.get("price") ?? "").trim().replace(",", ".");
+  const stockRaw = String(formData.get("stock") ?? "").trim();
+  const imageRaw = String(formData.get("image") ?? "").trim();
+
+  if (!productId) {
+    redirect(`/admin/dashboard?error=${encodeURIComponent("Brak identyfikatora produktu.")}`);
+  }
+
+  const priceCents = Math.round(parseFloat(priceRaw) * 100);
+  if (!priceRaw || !Number.isFinite(priceCents) || priceCents < 0) {
+    redirect(`/admin/dashboard?error=${encodeURIComponent("Podaj poprawna cene, np. 389.99.")}`);
+  }
+
+  if (stockRaw === "") {
+    redirect(`/admin/dashboard?error=${encodeURIComponent("Podaj stan magazynowy.")}`);
+  }
+  const stock = Number(stockRaw);
+  if (!Number.isInteger(stock) || stock < 0) {
+    redirect(`/admin/dashboard?error=${encodeURIComponent("Stan magazynowy musi byc liczba calkowita >= 0.")}`);
+  }
+
+  if (imageRaw && !imageRaw.startsWith("/") && !imageRaw.startsWith("http://") && !imageRaw.startsWith("https://")) {
+    redirect(
+      `/admin/dashboard?error=${encodeURIComponent("Zdjecie: podaj sciezke zaczynajaca sie od / albo pelny adres http(s).")}`,
+    );
+  }
+
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    include: { images: { orderBy: { position: "asc" } } },
+  });
+  if (!product) {
+    redirect(`/admin/dashboard?error=${encodeURIComponent("Nie znaleziono produktu.")}`);
+  }
+
+  const stockDelta = stock - product.stock;
+  const mainImage = product.images[0];
+
+  await prisma.$transaction(async (tx) => {
+    await tx.product.update({ where: { id: productId }, data: { priceCents, stock } });
+
+    // Zdjecie glowne: podmieniamy pierwsze w galerii (pozostale zdjecia bez zmian).
+    if (imageRaw && imageRaw !== mainImage?.url) {
+      if (mainImage) {
+        await tx.productImage.update({ where: { id: mainImage.id }, data: { url: imageRaw } });
+      } else {
+        await tx.productImage.create({ data: { productId, url: imageRaw, position: 0 } });
+      }
+    }
+
+    // Audyt zmian stanu — dokladnie jak przy platnosciach (ORDER_PAID).
+    if (stockDelta !== 0) {
+      await tx.inventoryMovement.create({
+        data: { productId, delta: stockDelta, reason: "MANUAL_ADJUSTMENT" },
+      });
+    }
+  });
+
+  revalidatePath("/admin/dashboard");
+  revalidatePath("/");
+  revalidatePath("/products");
+  revalidatePath(`/products/${product.slug}`);
+  redirect("/admin/dashboard?saved=1");
+}
