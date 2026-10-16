@@ -3,7 +3,7 @@ import Image from "next/image";
 import { prisma } from "@/lib/prisma";
 import ProductCard from "@/components/ProductCard";
 import AddToCartForm from "@/components/AddToCartForm";
-import PerfumeBottle3D from "@/components/3d/PerfumeBottle3D";
+import BrandSpinner from "@/components/BrandSpinner";
 import Reveal from "@/components/Reveal";
 
 export const revalidate = 0; // always show current stock/prices from the DB
@@ -58,10 +58,11 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* FLAKON 3D — fixed pod treścią; obraca się i przemieszcza w rytmie
-          sekcji oznaczonych data-bottle (scroll story). Bez WebGL strona działa bez 3D. */}
+      {/* KRĘCĄCY SIĘ NAPIS — fixed pod treścią; przemieszcza się w rytmie sekcji
+          oznaczonych data-bottle (scroll story), pierścienie kręcą się same.
+          Bez JS-a napis po prostu stoi — strona działa dalej. */}
       <div className="fixed inset-0 z-0" aria-hidden="true">
-        <PerfumeBottle3D />
+        <BrandSpinner />
       </div>
 
       <div className="relative z-10">

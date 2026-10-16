@@ -114,3 +114,35 @@
     linear-gradient(180deg, rgba(246, 241, 233, 0.42) 0%, rgba(246, 241, 233, 0) 34%),
     linear-gradient(0deg, rgba(246, 241, 233, 0.16) 0%, rgba(246, 241, 233, 0) 24%);
 }
+
+/* ============================================================
+ * KRĘCĄCY SIĘ NAPIS (components/BrandSpinner.tsx)
+ * zamiast flakonu 3D — dwa pierścienie SVG w przeciwne strony
+ * ============================================================ */
+@keyframes brand-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes brand-spin-rev {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+.brand-spinner .ring-spin,
+.brand-spinner .ring-spin-reverse {
+  transform-box: view-box;
+  transform-origin: 100px 100px;
+}
+.brand-spinner .ring-spin {
+  animation: brand-spin 44s linear infinite;
+}
+.brand-spinner .ring-spin-reverse {
+  animation: brand-spin-rev 64s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-spinner .ring-spin,
+  .brand-spinner .ring-spin-reverse {
+    animation: none;
+  }
+}
