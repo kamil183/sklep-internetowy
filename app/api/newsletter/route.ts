@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { confirmationEmail, sendEmail } from "@/lib/mailer";
 
 export const runtime = "nodejs";
 
@@ -49,6 +50,18 @@ export async function POST(req: NextRequest) {
         unsubscribedAt: null,
       },
     });
+
+    // Double opt-in: wyślij link potwierdzający (bezpiecznie dla zapisu —
+    // jeśli e-mail nie wyjdzie, subskrypcja i tak zostaje, a przyczynę logujemy).
+    if (!sub.confirmed) {
+      const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? req.nextUrl.origin).replace(/\/$/, "");
+      const result = await sendEmail(
+        confirmationEmail({ email: sub.email, token: sub.token, baseUrl }),
+      );
+      if (!result.ok) {
+        console.error("[newsletter] nie wysłano maila potwierdzającego:", result.error);
+      }
+    }
 
     // Nie zdradzamy, czy adres już istniał (ochrona danych — odpowiedź zawsze taka sama).
     return NextResponse.json({ ok: true }, { status: 201 });

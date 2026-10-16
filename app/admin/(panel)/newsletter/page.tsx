@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import NewsletterBroadcast from "@/components/admin/NewsletterBroadcast";
 import { revalidatePath } from "next/cache";
 
 export const revalidate = 0;
@@ -17,8 +18,10 @@ export default async function NewsletterPage({
 
   const where = query ? { email: { contains: query } } : {};
 
-  const [total, rows] = await Promise.all([
+  const [total, confirmedTotal, pendingTotal, rows] = await Promise.all([
     prisma.newsletterSubscriber.count({ where }),
+    prisma.newsletterSubscriber.count({ where: { confirmed: true, unsubscribedAt: null } }),
+    prisma.newsletterSubscriber.count({ where: { confirmed: false, unsubscribedAt: null } }),
     prisma.newsletterSubscriber.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -27,7 +30,6 @@ export default async function NewsletterPage({
     }),
   ]);
 
-  const activeCount = rows.filter((r) => r.confirmed && !r.unsubscribedAt).length;
 
   async function deleteSub(formData: FormData) {
     "use server";
@@ -58,8 +60,8 @@ export default async function NewsletterPage({
           <p className="font-display text-2xl">{total}</p>
         </div>
         <div className="card p-4">
-          <p className="text-xs text-creamdim">Na tej stronie (potwierdzeni)</p>
-          <p className="font-display text-2xl">{activeCount}</p>
+          <p className="text-xs text-creamdim">Potwierdzeni (aktywni)</p>
+          <p className="font-display text-2xl">{confirmedTotal}</p>
         </div>
         <div className="card p-4">
           <p className="text-xs text-creamdim">Ostatni zapis</p>
@@ -78,6 +80,8 @@ export default async function NewsletterPage({
         />
         <button className="btn">Szukaj</button>
       </form>
+
+      <NewsletterBroadcast pendingCount={pendingTotal} />
 
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
