@@ -1,13 +1,12 @@
 import Reveal from "@/components/ui/Reveal";
 import { BRAND } from "@/lib/config/brand";
-import ContactForm from "./ContactForm";
 
 /** Sekcja kontaktu — jasna, w stylu reszty strony (masaru.pl). */
 export default function ContactSection() {
   return (
     <section id="kontakt" className="relative z-10 bg-cream text-ink">
       <div className="mx-auto w-full max-w-[120rem] px-5 py-24 md:px-8 md:py-32">
-        <div className="grid gap-14 lg:grid-cols-2 lg:gap-20">
+        <div className="max-w-2xl">
           <div>
             <Reveal>
               <p className="section-label">Kontakt</p>
@@ -50,9 +49,7 @@ export default function ContactSection() {
             </Reveal>
           </div>
 
-          <Reveal delay={0.15}>
-            <ContactForm />
-          </Reveal>
+
         </div>
       </div>
     </section>
