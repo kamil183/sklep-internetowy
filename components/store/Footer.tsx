@@ -72,11 +72,7 @@ export default function Footer() {
                   Formularz kontaktowy
                 </Link>
               </li>
-              <li className="pt-2">
-                <span className="font-label text-[9px] uppercase tracking-[0.3em] text-warm-500">
-                  NIP {BRAND.nip}
-                </span>
-              </li>
+
             </ul>
           </div>
 
