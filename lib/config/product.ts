@@ -69,7 +69,7 @@ export const PRODUCT: ProductConfig = {
   slug: "zodara-parfums",
   brand: "ZODARA PARFUMS",
   name: "LAVIÉRA",
-  priceCents: null,
+  priceCents: 38999,
   volume: "50 ml",
   concentration: "Eau de Parfum",
   description:
