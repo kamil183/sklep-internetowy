@@ -42,8 +42,7 @@ export default function ContactSection() {
                   {BRAND.street}
                   <br />
                   {BRAND.postalCode} {BRAND.city}
-                  <br />
-                  NIP: {BRAND.nip}
+
                 </p>
               </address>
             </Reveal>
