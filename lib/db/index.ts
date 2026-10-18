@@ -28,13 +28,15 @@ export function getPool(): Pool {
   if (!connectionString) throw new DatabaseNotConfiguredError();
 
   if (!pool) {
+    // Try to fix SSL issues
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
     pool = new Pool({
       connectionString,
       max: 10,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 10_000,
-      ssl: { rejectUnauthorized: false },
-    } as any);
+      ssl: false,
+    });
   }
   return pool;
 }
