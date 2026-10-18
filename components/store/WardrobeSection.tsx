@@ -58,39 +58,37 @@ export default function WardrobeSection() {
           </h2>
         </Reveal>
 
-        <div className="mt-14 grid gap-10 md:mt-16 md:grid-cols-2 md:gap-8 lg:gap-12">
-          {CARD_IMAGES.map((image, index) => (
-            <Reveal key={image.src} delay={0.1 * index}>
-              <article className="group">
-                <div className="relative aspect-[4/5] overflow-hidden bg-shell">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- proste zdjęcie produktu bez optymalizatora */}
-                  <img
-                    src={image.src}
-                    alt={image.alt}
-                    className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-                    loading={index === 0 ? "eager" : "lazy"}
-                  />
-                </div>
+        <div className="mt-14 md:mt-16">
+          <Reveal>
+            <article className="group max-w-2xl">
+              <div className="relative aspect-[4/5] overflow-hidden bg-shell">
+                {/* eslint-disable-next-line @next/next/no-img-element -- proste zdjęcie produktu bez optymalizatora */}
+                <img
+                  src={CARD_IMAGES[0].src}
+                  alt={CARD_IMAGES[0].alt}
+                  className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+                  loading="eager"
+                />
+              </div>
 
-                <div className="mt-7 max-w-xl">
-                  <h3 className="font-display text-3xl leading-tight md:text-4xl">{name}</h3>
-                  <p className="mt-3 font-label text-[10px] uppercase tracking-[0.3em] text-warm-500">
-                    {meta}
-                  </p>
-                  <p
-                    className={`mt-4 leading-relaxed ${
-                      isPlaceholder(description) ? "text-warm-500" : "text-warm-300"
-                    }`}
-                  >
-                    {description}
-                  </p>
-                  <button type="button" className="btn-primary mt-7" onClick={handleBuy}>
-                    Kup teraz
-                  </button>
-                </div>
-              </article>
-            </Reveal>
-          ))}
+              <div className="mt-7 max-w-xl">
+                <h3 className="font-display text-3xl leading-tight md:text-4xl">{name}</h3>
+                <p className="mt-3 font-label text-[10px] uppercase tracking-[0.3em] text-warm-500">
+                  {meta}
+                </p>
+                <p
+                  className={`mt-4 leading-relaxed ${
+                    isPlaceholder(description) ? "text-warm-500" : "text-warm-300"
+                  }`}
+                >
+                  {description}
+                </p>
+                <button type="button" className="btn-primary mt-7" onClick={handleBuy}>
+                  Kup teraz
+                </button>
+              </div>
+            </article>
+          </Reveal>
         </div>
       </div>
     </section>

@@ -86,7 +86,7 @@ export default function BrandCurtain({ triggerId = "zapachy" }: BrandCurtainProp
         <div
           data-mark
           className="w-[26rem] max-w-[90vw] text-sand max-md:w-[13rem]"
-          style={{ opacity: 0, transform: "translateY(12px)" }}
+          style={{ opacity: 1, transform: "translateY(0px)" }}
         >
           <svg viewBox="0 0 1400 260" className="block h-auto w-full" role="img" aria-label="ZODARA">
             <defs>
