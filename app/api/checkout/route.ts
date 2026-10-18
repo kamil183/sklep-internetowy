@@ -158,8 +158,8 @@ export async function POST(req: Request) {
   } catch (error) {
     if (error instanceof DatabaseNotConfiguredError) return json(error.message, 503);
     console.error("[checkout] błąd zapisu zamówienia:", error);
-    const message = error instanceof Error ? error.message : String(error);
-    return json(`Błąd: ${message}`, 500);
+    console.error("[checkout] błąd zapisu zamówienia:", error);
+    return json("Nie udało się zapisać zamówienia. Spróbuj ponownie.", 500);
   }
 
   // 6. Sesja Stripe Checkout (prawdziwe przekierowanie płatnicze)
@@ -210,6 +210,6 @@ export async function POST(req: Request) {
       error instanceof Error && error.message
         ? `Stripe: ${error.message}`
         : "Nie udało się uruchomić płatności.";
-    return json(message, 502);
+    return json(process.env.NODE_ENV === "development" ? message : "Nie udało się uruchomić płatności.", 502);
   }
 }
