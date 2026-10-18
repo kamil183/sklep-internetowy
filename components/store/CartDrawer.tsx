@@ -130,7 +130,7 @@ export default function CartDrawer() {
                       router.push("/checkout");
                     }}
                   >
-                    Przejdź do checkoutu
+                    Przejdź do płatności
                   </button>
                   <p className="mt-3 text-center text-xs text-warm-500">
                     Dostawa i płatność — w kolejnym kroku.

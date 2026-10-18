@@ -126,7 +126,7 @@ export default function CheckoutClient({ shippingMethods, stripeEnabled, dbEnabl
       <main className="mx-auto max-w-2xl px-6 pt-40 pb-32 text-center">
         <ShoppingBag className="mx-auto h-10 w-10 text-gold" aria-hidden />
         <h1 className="mt-6 font-display text-3xl">Twój koszyk jest pusty</h1>
-        <p className="mt-3 text-sm text-warm-500">Dodaj produkt, aby przejść do checkoutu.</p>
+        <p className="mt-3 text-sm text-warm-500">Dodaj produkt, aby przejść do płatności.</p>
         <button type="button" onClick={() => router.push("/")} className="btn-primary mt-8">
           WRÓĆ DO STRONY
         </button>
@@ -294,7 +294,7 @@ export default function CheckoutClient({ shippingMethods, stripeEnabled, dbEnabl
           )}
 
           <button type="submit" disabled={submitting} className="btn-primary w-full disabled:opacity-60">
-            {submitting ? "PRZEKIEROWYWANIE…" : "PRZEJDŹ DO PŁATNOŚCI (STRIPE)"}
+            {submitting ? "PRZEKIEROWYWANIE…" : "PRZEJDŹ DO PŁATNOŚCI"}
           </button>
           <p className="flex items-center justify-center gap-2 text-[11px] text-warm-600">
             <Lock className="h-3.5 w-3.5" /> Płatność obsługiwana przez Stripe
