@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { Loader2, Save } from "lucide-react";
-import { updateProductAction, type ActionResult } from "@/app/admin/(panel)/actions";
+import { updateProductAction, type ActionResult } from "@/app/admin/actions";
 
 type Product = {
   id: string;

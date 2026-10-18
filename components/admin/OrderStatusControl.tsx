@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { Loader2 } from "lucide-react";
-import { setOrderStatusFormAction, type ActionResult } from "@/app/admin/(panel)/actions";
+import { setOrderStatusFormAction, type ActionResult } from "@/app/admin/actions";
 
 const STATUSES = ["NEW", "PAID", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
 
