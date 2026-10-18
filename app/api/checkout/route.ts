@@ -1,185 +1,176 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { prisma } from "@/lib/prisma";
-import { stripe } from "@/lib/stripe";
-import { generateOrderNumber, findValidDiscountCode } from "@/lib/orders";
-
-const SHIPPING_RATES_CENTS = {
-  INPOST_LOCKER: 1200,
-  INPOST_COURIER: 1600,
-} as const;
-
-const checkoutSchema = z.object({
-  items: z.array(z.object({ productId: z.string(), quantity: z.number().int().min(1) })).min(1),
-  customer: z.object({
-    firstName: z.string().min(1),
-    lastName: z.string().min(1),
-    email: z.string().email(),
-    phone: z.string().min(6),
-  }),
-  deliveryMethod: z.enum(["INPOST_LOCKER", "INPOST_COURIER"]),
-  inpostLockerCode: z.string().optional(),
-  shippingAddress: z
-    .object({ street: z.string(), city: z.string(), postCode: z.string() })
-    .optional(),
-  discountCode: z.string().optional(),
-  attribution: z
-    .object({
-      trafficSource: z.string().optional(),
-      utmSource: z.string().optional(),
-      utmMedium: z.string().optional(),
-      utmCampaign: z.string().optional(),
-    })
-    .optional(),
-});
-
-export async function POST(req: NextRequest) {
-  const parsed = checkoutSchema.safeParse(await req.json());
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Nieprawidłowe dane zamówienia.", details: parsed.error.flatten() }, { status: 400 });
-  }
-  const data = parsed.data;
-
-  if (data.deliveryMethod === "INPOST_LOCKER" && !data.inpostLockerCode) {
-    return NextResponse.json({ error: "Wybierz Paczkomat." }, { status: 400 });
-  }
-  if (data.deliveryMethod === "INPOST_COURIER" && !data.shippingAddress) {
-    return NextResponse.json({ error: "Podaj adres dostawy." }, { status: 400 });
-  }
-
-  // Server-side stock + price lookup — never trust prices sent from the client.
-  const productIds = data.items.map((i) => i.productId);
-  const products = await prisma.product.findMany({ where: { id: { in: productIds }, isActive: true } });
-
-  for (const item of data.items) {
-    const product = products.find((p) => p.id === item.productId);
-    if (!product) {
-      return NextResponse.json({ error: "Jeden z produktów jest niedostępny." }, { status: 400 });
-    }
-    if (product.stock < item.quantity) {
-      return NextResponse.json({ error: `Za mało sztuk na stanie: ${product.name}.` }, { status: 400 });
-    }
-  }
-
-  const subtotalCents = data.items.reduce((sum, item) => {
-    const product = products.find((p) => p.id === item.productId)!;
-    return sum + product.priceCents * item.quantity;
-  }, 0);
-
-  let discountCents = 0;
-  let discountCodeRecord = null;
-  if (data.discountCode) {
-    const result = await findValidDiscountCode(data.discountCode, subtotalCents);
-    if ("error" in result) return NextResponse.json({ error: result.error }, { status: 400 });
-    discountCents = result.discountCents;
-    discountCodeRecord = result.discount;
-  }
-
-  const shippingCents = SHIPPING_RATES_CENTS[data.deliveryMethod];
-  const totalCents = Math.max(0, subtotalCents - discountCents) + shippingCents;
-
-  const customer = await prisma.customer.upsert({
-    where: { email: data.customer.email.toLowerCase() },
-    update: { firstName: data.customer.firstName, lastName: data.customer.lastName, phone: data.customer.phone },
-    create: {
-      email: data.customer.email.toLowerCase(),
-      firstName: data.customer.firstName,
-      lastName: data.customer.lastName,
-      phone: data.customer.phone,
-    },
-  });
-
-  // Order is created as NEW / PENDING *before* payment. It only ever becomes
-  // PAID inside the Stripe webhook handler, once Stripe confirms the charge —
-  // never here, and never when the customer is redirected back to /order-success.
-  const order = await prisma.order.create({
-    data: {
-      orderNumber: generateOrderNumber(),
-      customerId: customer.id,
-      subtotalCents,
-      discountCents,
-      shippingCents,
-      totalCents,
-      discountCodeId: discountCodeRecord?.id,
-      deliveryMethod: data.deliveryMethod,
-      inpostLockerCode: data.inpostLockerCode,
-      shippingAddress: data.shippingAddress ?? undefined,
-      status: "NEW",
-      paymentStatus: "PENDING",
-      trafficSource: data.attribution?.trafficSource,
-      utmSource: data.attribution?.utmSource,
-      utmMedium: data.attribution?.utmMedium,
-      utmCampaign: data.attribution?.utmCampaign,
-      items: {
-        create: data.items.map((item) => {
-          const product = products.find((p) => p.id === item.productId)!;
-          return { productId: product.id, quantity: item.quantity, unitPriceCents: product.priceCents };
-        }),
-      },
-    },
-  });
-
-  const origin = req.headers.get("origin") ?? process.env.NEXT_PUBLIC_APP_URL;
-
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    payment_method_types: ["card", "blik", "p24"],
-    // Apple Pay / Google Pay are surfaced automatically by Stripe Checkout
-    // for eligible browsers/devices when "card" is enabled — no separate
-    // integration is required on top of Stripe.
-    customer_email: data.customer.email,
-    line_items: [
-      ...data.items.map((item) => {
-        const product = products.find((p) => p.id === item.productId)!;
-        return {
-          quantity: item.quantity,
-          price_data: {
-            currency: "pln",
-            unit_amount: product.priceCents,
-            product_data: { name: product.name },
-          },
-        };
-      }),
-      {
-        quantity: 1,
-        price_data: {
-          currency: "pln",
-          unit_amount: shippingCents,
-          product_data: { name: `Dostawa — ${data.deliveryMethod === "INPOST_LOCKER" ? "Paczkomat InPost" : "Kurier InPost"}` },
-        },
-      },
-    ],
-    discounts: discountCents > 0
-      ? [{ coupon: await ensureStripeCoupon(discountCodeRecord!.id, discountCents) }]
-      : undefined,
-    metadata: { orderId: order.id, orderNumber: order.orderNumber },
-    success_url: `${origin}/order-success?order=${order.orderNumber}`,
-    cancel_url: `${origin}/checkout?cancelled=1`,
-  });
-
-  await prisma.payment.create({
-    data: {
-      orderId: order.id,
-      stripeCheckoutSessionId: session.id,
-      amountCents: totalCents,
-      status: "PENDING",
-    },
-  });
-
-  return NextResponse.json({ url: session.url });
-}
+import { NextResponse } from "next/server";
+import { PRODUCT } from "@/lib/config/product";
+import { getShippingMethod } from "@/lib/config/shipping";
+import {
+  DatabaseNotConfiguredError,
+  attachStripeSession,
+  createOrder,
+  findCustomerOrCreate,
+  isDatabaseConfigured,
+  resolveCheckoutProduct,
+} from "@/lib/db/repository";
+import { getStripe, isStripeConfigured } from "@/lib/stripe/server";
+import { checkoutSchema, firstZodError } from "@/lib/validation/schemas";
 
 /**
- * Stripe Checkout coupons must exist as Stripe objects. We create a one-off,
- * exact-amount coupon per order so the discount shown in Stripe's hosted
- * page always matches what our own discount-code logic computed.
+ * POST /api/checkout
+ *
+ * Tworzy zamówienie w bazie i uruchamia prawdziwy Stripe Checkout
+ * (przekierowanie na stronę Stripe — numer karty, BLIK itd. wpisywane
+ * są TYLKO na Stripe, nigdy u nas). Bez skonfigurowanych kluczy/zmiennej
+ * zwraca czytelny komunikat — żadnych udawanych płatności.
  */
-async function ensureStripeCoupon(discountCodeId: string, amountOffCents: number) {
-  const coupon = await stripe.coupons.create({
-    amount_off: amountOffCents,
-    currency: "pln",
-    duration: "once",
-    name: "Kod rabatowy",
-  });
-  return coupon.id;
+
+const json = (error: string, status: number) =>
+  NextResponse.json({ ok: false, error }, { status });
+
+export async function POST(req: Request) {
+  // 1. Walidacja danych z formularza (Zod — serwer waliduje niezależnie od UI)
+  let payload: unknown;
+  try {
+    payload = await req.json();
+  } catch {
+    return json("Nieprawidłowe dane żądania.", 400);
+  }
+
+  const parsed = checkoutSchema.safeParse(payload);
+  if (!parsed.success) return json(firstZodError(parsed.error), 400);
+  const input = parsed.data;
+
+  // 2. Konfiguracja środowiska
+  if (!isDatabaseConfigured()) {
+    return json(
+      "Brak bazy danych: ustaw DATABASE_URL i uruchom SQL z supabase/schema.sql — zamówienia nie zostaną zapisane.",
+      503,
+    );
+  }
+  if (!isStripeConfigured()) {
+    return json(
+      "Płatności nie są jeszcze skonfigurowane: ustaw STRIPE_SECRET_KEY (Stripe Dashboard → Developers → API keys).",
+      503,
+    );
+  }
+
+  // 3. Produkt i cena (jeden produkt sklepu)
+  const dbProduct = await resolveCheckoutProduct(input.items[0].productId).catch(() => null);
+  if (!dbProduct && isDatabaseConfigured()) {
+    return json(
+      "Brak produktu w bazie — uruchom SQL z pliku supabase/schema.sql (albo uzupełnij produkt w panelu /admin/products).",
+      409,
+    );
+  }
+
+  const knownIds = new Set([PRODUCT.id, dbProduct?.id].filter(Boolean) as string[]);
+  if (input.items.some((item) => !knownIds.has(item.productId))) {
+    return json("Nieznany produkt w koszyku.", 400);
+  }
+
+  const priceCents = dbProduct?.priceCents ?? PRODUCT.priceCents;
+  if (priceCents === null || priceCents <= 0) {
+    return json(
+      "Cena produktu nie jest ustawiona — uzupełnij ją w panelu /admin/products lub w lib/config/product.ts.",
+      409,
+    );
+  }
+
+  if (dbProduct && !dbProduct.isActive) {
+    return json("Produkt jest aktualnie niedostępny.", 409);
+  }
+  const quantity = input.items.reduce((sum, item) => sum + item.quantity, 0);
+  if (dbProduct && dbProduct.stock > 0 && quantity > dbProduct.stock) {
+    return json(`Dostępna ilość: ${dbProduct.stock} szt.`, 409);
+  }
+
+  // 4. Dostawa
+  const shipping = getShippingMethod(input.delivery.method);
+  if (!shipping) return json("Nieznany sposób dostawy.", 400);
+  if (shipping.priceCents === null || shipping.priceCents < 0) {
+    return json(
+      "Cena dostawy nie jest ustawiona — uzupełnij lib/config/shipping.ts ([CENA DOSTAWY]).",
+      409,
+    );
+  }
+
+  // 5. Zapis zamówienia w bazie
+  let orderId: string;
+  let orderNumber: string;
+  try {
+    const customer = await findCustomerOrCreate(input.customer);
+    const order = await createOrder({
+      customerId: customer.id,
+      items: [
+        {
+          productId: dbProduct!.id,
+          quantity,
+          unitPriceCents: priceCents,
+        },
+      ],
+      subtotalCents: priceCents * quantity,
+      shippingCents: shipping.priceCents,
+      deliveryMethod: input.delivery.method,
+      lockerCode: input.delivery.lockerCode || null,
+      shippingAddress: {
+        street: input.delivery.street,
+        postCode: input.delivery.postCode,
+        city: input.delivery.city,
+      },
+    });
+    orderId = order.id;
+    orderNumber = order.orderNumber;
+  } catch (error) {
+    if (error instanceof DatabaseNotConfiguredError) return json(error.message, 503);
+    console.error("[checkout] błąd zapisu zamówienia:", error);
+    return json("Nie udało się zapisać zamówienia. Spróbuj ponownie.", 500);
+  }
+
+  // 6. Sesja Stripe Checkout (prawdziwe przekierowanie płatnicze)
+  const stripe = getStripe();
+  if (!stripe) return json("Stripe nie jest skonfigurowany.", 503);
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(req.url).origin;
+  const productName = dbProduct?.name ?? PRODUCT.name ?? PRODUCT.brand;
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      customer_email: input.customer.email,
+      line_items: [
+        {
+          quantity,
+          price_data: {
+            currency: "pln",
+            unit_amount: priceCents,
+            product_data: {
+              name: productName,
+              description: dbProduct?.volume ?? undefined,
+            },
+          },
+        },
+      ],
+      shipping_options: [
+        {
+          shipping_rate_data: {
+            display_name: shipping.label,
+            type: "fixed_amount",
+            fixed_amount: { amount: shipping.priceCents, currency: "pln" },
+          },
+        },
+      ],
+      metadata: { orderId, orderNumber },
+      success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/checkout?canceled=1`,
+    });
+
+    if (!session.url) return json("Stripe nie zwrócił adresu płatności.", 502);
+
+    await attachStripeSession(orderId, session.id);
+    return NextResponse.json({ ok: true, url: session.url });
+  } catch (error) {
+    console.error("[checkout] błąd Stripe:", error);
+    const message =
+      error instanceof Error && error.message
+        ? `Stripe: ${error.message}`
+        : "Nie udało się uruchomić płatności.";
+    return json(message, 502);
+  }
 }

@@ -1,109 +1,88 @@
-import { prisma } from "@/lib/prisma";
+import type { Metadata } from "next";
+import { BarChart3 } from "lucide-react";
+import { getStatistics } from "@/lib/db/repository";
+import { dbReady, DB_OFFLINE_NOTICE } from "@/lib/admin/guard";
+import { formatPrice } from "@/lib/utils/format";
 
-export const revalidate = 0;
+export const metadata: Metadata = { title: "Statystyki" };
+export const dynamic = "force-dynamic";
 
-export default async function StatisticsPage() {
-  const paidOrders = await prisma.order.findMany({
-    where: { paymentStatus: "PAID" },
-    include: { items: { include: { product: true } } },
-  });
-
-  const totalRevenue = paidOrders.reduce((sum, o) => sum + o.totalCents, 0);
-  const orderCount = paidOrders.length;
-  const avgOrderValue = orderCount > 0 ? totalRevenue / orderCount : 0;
-  const unitsSold = paidOrders.reduce((sum, o) => sum + o.items.reduce((s, i) => s + i.quantity, 0), 0);
-
-  const productSales = new Map<string, { name: string; qty: number; revenue: number }>();
-  for (const order of paidOrders) {
-    for (const item of order.items) {
-      const entry = productSales.get(item.productId) ?? { name: item.product.name, qty: 0, revenue: 0 };
-      entry.qty += item.quantity;
-      entry.revenue += item.unitPriceCents * item.quantity;
-      productSales.set(item.productId, entry);
-    }
-  }
-  const topProducts = [...productSales.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
-
-  const trafficBreakdown = new Map<string, number>();
-  for (const order of paidOrders) {
-    const key = order.trafficSource ?? "Nieprzypisane";
-    trafficBreakdown.set(key, (trafficBreakdown.get(key) ?? 0) + 1);
+export default async function AdminStatisticsPage() {
+  if (!dbReady()) {
+    return (
+      <div className="space-y-6">
+        <h1 className="font-display text-3xl">Statystyki</h1>
+        <div className="rounded-xl border border-warning/40 bg-warning/10 p-5 text-sm text-warm-300">
+          <p className="text-warm-500">{DB_OFFLINE_NOTICE}</p>
+        </div>
+      </div>
+    );
   }
 
-  const discountStats = await prisma.discountCode.findMany({
-    include: { usages: { include: { order: true } } },
-  });
+  const stats = await getStatistics();
+  const maxDaily = Math.max(1, ...stats.last30Days.map((d) => d.count));
 
   return (
-    <div>
-      <h1 className="font-display text-2xl mb-8">Statystyki</h1>
-
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-        {[
-          { label: "Sprzedaż łącznie", value: `${(totalRevenue / 100).toFixed(2)} zł` },
-          { label: "Liczba zamówień", value: orderCount },
-          { label: "Średnia wartość zamówienia", value: `${(avgOrderValue / 100).toFixed(2)} zł` },
-          { label: "Sprzedane sztuki", value: unitsSold },
-        ].map((s) => (
-          <div key={s.label} className="card p-5">
-            <div className="text-creamdim text-xs mb-2">{s.label}</div>
-            <div className="font-display text-2xl text-amber">{s.value}</div>
-          </div>
-        ))}
+    <div className="space-y-8">
+      <div>
+        <h1 className="font-display text-3xl">Statystyki</h1>
+        <p className="mt-1 text-sm text-warm-500">Dane wyłącznie opłaconych zamówień (potwierdzonych webhookiem Stripe).</p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6 mb-10">
-        <div className="card p-5">
-          <h2 className="font-display mb-4">Najlepiej sprzedające się produkty</h2>
-          {topProducts.length === 0 && <p className="text-creamdim text-sm">Brak danych sprzedażowych.</p>}
-          <div className="space-y-2">
-            {topProducts.map((p) => (
-              <div key={p.name} className="flex justify-between text-sm">
-                <span>{p.name} <span className="text-creamdim">× {p.qty}</span></span>
-                <span className="text-amber">{(p.revenue / 100).toFixed(2)} zł</span>
-              </div>
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card label="Przychód" value={formatPrice(stats.revenueCents)} />
+        <Card label="Zamówienia opłacone" value={`${stats.ordersPaid} / ${stats.ordersTotal}`} />
+        <Card label="Sprzedane sztuki" value={String(stats.unitsSold)} />
+        <Card label="Klienci" value={String(stats.customersTotal)} />
+      </section>
+
+      {stats.statusBreakdown.length > 0 && (
+        <section className="admin-card">
+          <h2 className="label mb-4">Statusy zamówień</h2>
+          <ul className="grid gap-2 text-sm sm:grid-cols-2">
+            {stats.statusBreakdown.map((row) => (
+              <li key={row.status} className="flex items-center justify-between border-b border-white/5 pb-2">
+                <span className="admin-badge">{row.status}</span>
+                <span className="text-warm-300">{row.count}</span>
+              </li>
             ))}
+          </ul>
+        </section>
+      )}
+
+      <section className="admin-card">
+        <h2 className="label mb-4">Zamówienia z ostatnich 30 dni</h2>
+        {stats.last30Days.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-8 text-center">
+            <BarChart3 className="h-8 w-8 text-warm-600" aria-hidden />
+            <p className="text-sm text-warm-500">Brak danych w ostatnich 30 dniach.</p>
           </div>
-        </div>
-
-        <div className="card p-5">
-          <h2 className="font-display mb-4">Źródła ruchu (zamówienia opłacone)</h2>
-          <p className="text-xs text-creamdim mb-3">
-            Wypełnia się automatycznie po podłączeniu Google Analytics / parametrów UTM — patrz README.
-          </p>
-          {[...trafficBreakdown.entries()].map(([source, count]) => (
-            <div key={source} className="flex justify-between text-sm py-1">
-              <span className="capitalize">{source}</span>
-              <span className="text-creamdim">{count}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="card p-5">
-        <h2 className="font-display mb-4">Wykorzystanie kodów rabatowych</h2>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-creamdim border-b border-line">
-              <th className="py-2">Kod</th>
-              <th className="py-2">Użycia</th>
-              <th className="py-2">Wygenerowana sprzedaż</th>
-            </tr>
-          </thead>
-          <tbody>
-            {discountStats.map((d) => (
-              <tr key={d.id} className="border-b border-line last:border-0">
-                <td className="py-2 text-amber">{d.code}</td>
-                <td className="py-2">{d.usages.length}</td>
-                <td className="py-2">{(d.usages.reduce((s, u) => s + u.order.totalCents, 0) / 100).toFixed(2)} zł</td>
-              </tr>
+        ) : (
+          <ul className="space-y-2">
+            {stats.last30Days.map((row) => (
+              <li key={row.day} className="flex items-center gap-4 text-sm">
+                <span className="w-24 shrink-0 text-warm-500">{row.day}</span>
+                <span className="h-2 flex-1 overflow-hidden rounded-full bg-white/5">
+                  <span
+                    className="block h-full rounded-full bg-gold"
+                    style={{ width: `${Math.max(6, (row.count / maxDaily) * 100)}%` }}
+                  />
+                </span>
+                <span className="w-8 shrink-0 text-right text-warm-300">{row.count}</span>
+              </li>
             ))}
-            {discountStats.length === 0 && (
-              <tr><td colSpan={3} className="py-4 text-center text-creamdim">Brak kodów rabatowych.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function Card({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="admin-card">
+      <p className="text-[11px] uppercase tracking-widest text-warm-500">{label}</p>
+      <p className="mt-2 font-display text-3xl text-gold">{value}</p>
     </div>
   );
 }

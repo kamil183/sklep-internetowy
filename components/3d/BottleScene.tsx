@@ -6,7 +6,7 @@
  * więc nic nie obraca się „samo bez związku ze scrollem".
  */
 
-import { Suspense, useMemo, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
@@ -23,10 +23,19 @@ function GlbBottle({ url }: { url: string }) {
   const { scene } = useGLTF(url);
 
   // Jeśli model zawiera węzeł o nazwie „Cap", animujemy jego pozycję jak zakrętkę.
-  const cap = useMemo(() => scene.getObjectByName("Cap") ?? null, [scene]);
-  const capBaseY = useMemo(() => cap?.position.y ?? 0, [cap]);
+  // Trzymamy węzeł w refie — obiekty three.js mutujemy co klatkę w useFrame.
+  const capRef = useRef<THREE.Object3D | null>(null);
+  const capBaseY = useMemo(() => scene.getObjectByName("Cap")?.position.y ?? 0, [scene]);
+
+  useEffect(() => {
+    capRef.current = scene.getObjectByName("Cap") ?? null;
+    return () => {
+      capRef.current = null;
+    };
+  }, [scene]);
 
   useFrame(() => {
+    const cap = capRef.current;
     if (!cap) return;
     const state = sampleBottleState(scrollStore.progress);
     cap.position.y = capBaseY + state.capLift * 1.05;

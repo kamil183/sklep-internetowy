@@ -1,91 +1,120 @@
-import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { updateOrderStatus, generateShippingLabel } from "@/lib/actions/orders";
-import { revalidatePath } from "next/cache";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { getOrderById } from "@/lib/db/repository";
+import { dbReady, DB_OFFLINE_NOTICE } from "@/lib/admin/guard";
+import { formatPrice } from "@/lib/utils/format";
+import OrderStatusControl from "@/components/admin/OrderStatusControl";
 
-export const revalidate = 0;
+export const metadata: Metadata = { title: "Zamówienie" };
+export const dynamic = "force-dynamic";
 
-const STATUS_OPTIONS = ["NEW", "PAID", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
+export default async function AdminOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
 
-export default async function OrderDetailPage({ params }: { params: { id: string } }) {
-  const order = await prisma.order.findUnique({
-    where: { id: params.id },
-    include: { customer: true, items: { include: { product: true } }, payment: true, shipment: true, discountCode: true },
-  });
-  if (!order) notFound();
-
-  async function changeStatus(formData: FormData) {
-    "use server";
-    await updateOrderStatus(order!.id, formData.get("status") as any);
+  if (!dbReady()) {
+    return (
+      <div className="space-y-6">
+        <Link href="/admin/orders" className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-warm-500 hover:text-gold">
+          <ArrowLeft className="h-4 w-4" /> Zamówienia
+        </Link>
+        <div className="rounded-xl border border-warning/40 bg-warning/10 p-5 text-sm text-warm-300">
+          <p className="text-warm-500">{DB_OFFLINE_NOTICE}</p>
+        </div>
+      </div>
+    );
   }
 
-  async function createLabel() {
-    "use server";
-    await generateShippingLabel(order!.id);
-    revalidatePath(`/admin/orders/${order!.id}`);
+  const order = await getOrderById(id);
+
+  if (!order) {
+    return (
+      <div className="space-y-6">
+        <Link href="/admin/orders" className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-warm-500 hover:text-gold">
+          <ArrowLeft className="h-4 w-4" /> Zamówienia
+        </Link>
+        <div className="admin-card text-center text-sm text-warm-500">Nie znaleziono zamówienia.</div>
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-4xl">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="font-display text-2xl">Zamówienie {order.orderNumber}</h1>
-        <form action={changeStatus} className="flex gap-2">
-          <select name="status" defaultValue={order.status} className="input-field !py-2 !w-auto">
-            {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <button className="btn-outline">Zapisz status</button>
-        </form>
+    <div className="space-y-8">
+      <Link href="/admin/orders" className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-warm-500 hover:text-gold">
+        <ArrowLeft className="h-4 w-4" /> Zamówienia
+      </Link>
+
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl">{order.orderNumber}</h1>
+          <p className="mt-1 text-sm text-warm-500">{new Date(order.createdAt).toLocaleString("pl-PL")}</p>
+        </div>
+        <div className="text-right">
+          <p className="font-display text-3xl text-gold">{formatPrice(order.totalCents)}</p>
+          <p className="mt-1"><span className="admin-badge">PŁATNOŚĆ: {order.paymentStatus}</span></p>
+        </div>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6 mb-8">
-        <div className="card p-5">
-          <h2 className="text-sm text-creamdim mb-3">Klient</h2>
-          <p>{order.customer.firstName} {order.customer.lastName}</p>
-          <p className="text-creamdim text-sm">{order.customer.email}</p>
-          <p className="text-creamdim text-sm">{order.customer.phone}</p>
-        </div>
-        <div className="card p-5">
-          <h2 className="text-sm text-creamdim mb-3">Płatność</h2>
-          <p className="text-amber">{order.paymentStatus}</p>
-          <p className="text-creamdim text-sm">{order.payment?.method ?? "—"}</p>
-          <p className="text-creamdim text-sm">{order.payment?.confirmedAt?.toLocaleString("pl-PL") ?? "Nieopłacone"}</p>
-        </div>
-        <div className="card p-5">
-          <h2 className="text-sm text-creamdim mb-3">Dostawa</h2>
-          <p>{order.deliveryMethod === "INPOST_LOCKER" ? `Paczkomat: ${order.inpostLockerCode}` : "Kurier InPost"}</p>
-          <p className="text-creamdim text-sm">{order.shipment?.status ?? "Nie utworzono przesyłki"}</p>
-          {order.shipment?.trackingNumber && <p className="text-creamdim text-sm">Nr: {order.shipment.trackingNumber}</p>}
-          {order.paymentStatus === "PAID" && !order.shipment?.inpostShipmentId && (
-            <form action={createLabel} className="mt-3">
-              <button className="btn-outline text-xs">Utwórz przesyłkę InPost / etykietę</button>
-            </form>
+      <section className="grid gap-6 lg:grid-cols-2">
+        <div className="admin-card">
+          <h2 className="label mb-4">Klient</h2>
+          {order.customer ? (
+            <dl className="space-y-2 text-sm">
+              <div><dt className="text-warm-600">Imię i nazwisko</dt><dd className="text-warm-300">{order.customer.firstName} {order.customer.lastName}</dd></div>
+              <div><dt className="text-warm-600">E-mail</dt><dd className="text-warm-300">{order.customer.email}</dd></div>
+              <div><dt className="text-warm-600">Telefon</dt><dd className="text-warm-300">{order.customer.phone || "—"}</dd></div>
+            </dl>
+          ) : (
+            <p className="text-sm text-warm-500">Brak danych.</p>
           )}
         </div>
-      </div>
 
-      <div className="card p-5">
-        <h2 className="text-sm text-creamdim mb-4">Produkty</h2>
-        {order.items.map((item) => (
-          <div key={item.id} className="flex justify-between py-2 border-b border-line last:border-0 text-sm">
-            <span>{item.product.name} × {item.quantity}</span>
-            <span>{((item.unitPriceCents * item.quantity) / 100).toFixed(2)} zł</span>
-          </div>
-        ))}
-        <div className="flex justify-between pt-3 text-sm text-creamdim">
-          <span>Suma produktów</span><span>{(order.subtotalCents / 100).toFixed(2)} zł</span>
+        <div className="admin-card">
+          <h2 className="label mb-4">Dostawa</h2>
+          <dl className="space-y-2 text-sm">
+            <div><dt className="text-warm-600">Sposób</dt><dd className="text-warm-300">{order.deliveryMethod === "INPOST_LOCKER" ? "Paczkomat" : "Kurier"}</dd></div>
+            {order.lockerCode && <div><dt className="text-warm-600">Kod paczkomatu</dt><dd className="text-warm-300">{order.lockerCode}</dd></div>}
+            {order.shippingAddress && (
+              <div>
+                <dt className="text-warm-600">Adres</dt>
+                <dd className="text-warm-300">
+                  {order.shippingAddress.street}, {order.shippingAddress.postCode} {order.shippingAddress.city}
+                </dd>
+              </div>
+            )}
+            <div><dt className="text-warm-600">Dostawa</dt><dd className="text-warm-300">{formatPrice(order.shippingCents)}</dd></div>
+          </dl>
         </div>
-        {order.discountCode && (
-          <div className="flex justify-between text-sm text-amber">
-            <span>Rabat ({order.discountCode.code})</span><span>−{(order.discountCents / 100).toFixed(2)} zł</span>
-          </div>
+      </section>
+
+      <section className="admin-card">
+        <h2 className="label mb-4">Pozycje</h2>
+        <table className="admin-table">
+          <thead>
+            <tr><th>Produkt</th><th>Ilość</th><th>Cena jedn.</th><th>Wartość</th></tr>
+          </thead>
+          <tbody>
+            {order.items.map((item) => (
+              <tr key={item.id}>
+                <td className="text-warm-300">Produkt (ID: {item.productId})</td>
+                <td>{item.quantity}</td>
+                <td>{formatPrice(item.unitPriceCents)}</td>
+                <td>{item.unitPriceCents !== null ? formatPrice(item.unitPriceCents * item.quantity) : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <section className="admin-card">
+        <h2 className="label mb-4">Status zamówienia</h2>
+        <OrderStatusControl orderId={order.id} status={order.status} />
+        {order.stripeCheckoutSessionId && (
+          <p className="mt-4 text-[11px] text-warm-600">
+            Stripe session: <code className="text-warm-300">{order.stripeCheckoutSessionId}</code>
+          </p>
         )}
-        <div className="flex justify-between text-sm text-creamdim">
-          <span>Dostawa</span><span>{(order.shippingCents / 100).toFixed(2)} zł</span>
-        </div>
-        <div className="flex justify-between text-lg pt-3 mt-2 border-t border-line">
-          <span>Razem</span><span className="text-amber font-display">{(order.totalCents / 100).toFixed(2)} zł</span>
-        </div>
-      </div>
+      </section>
     </div>
   );
 }

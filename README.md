@@ -1,126 +1,142 @@
-# Atelier No.7 — sklep internetowy + panel administracyjny
+# ZODARA PARFUMS — sklep internetowy
 
-Prawdziwa aplikacja webowa (Next.js 14 App Router + TypeScript + Prisma/PostgreSQL),
-nie makieta. Dane sklepu (produkty, zamówienia, magazyn, kody rabatowe, klienci)
-żyją w prawdziwej bazie danych. Płatności obsługuje Stripe (BLIK, Przelewy24,
-karta, Apple Pay, Google Pay). Dostawa: oficjalny InPost Geowidget (Paczkomat)
-i kurier, z warstwą przygotowaną pod ShipX API (etykiety, tracking).
+Produkcyjnie przygotowany, jednoproduktowy sklep luksusowej marki perfum
+(**ZODARA PARFUMS**, Laura Ludef, Rakoniewice).
 
-## 1. Struktura projektu
+- **Stack:** Next.js (App Router, TypeScript), Tailwind CSS v4, React Three Fiber (flakon 3D),
+  GSAP ScrollTrigger + Lenis (smooth scroll), Stripe Checkout, PostgreSQL/Supabase.
+- **Architektura:** front i API osobno, cała logika danych w `lib/`, konfiguracja w `lib/config/`.
+- Bez sekretów w kodzie — wszystkie klucze przez zmienne środowiskowe.
 
-```
-app/
-  (store)/                 ← publiczny sklep
-    page.tsx                 strona główna
-    products/page.tsx        lista produktów
-    products/[id]/page.tsx   karta produktu
-    cart/page.tsx             koszyk
-    checkout/page.tsx         checkout (dane, dostawa, Geowidget InPost)
-    order-success/page.tsx    potwierdzenie (czyta status z bazy, nic nie zapisuje)
-  admin/
-    login/page.tsx            logowanie do panelu
-    (panel)/                  wszystko poniżej wymaga zalogowania
-      dashboard/               statystyki dnia/miesiąca, ostatnie zamówienia
-      orders/                  lista + szczegóły zamówienia, zmiana statusu, etykieta InPost
-      products/                CRUD produktów
-      discounts/               kody rabatowe + statystyki użycia
-      statistics/              sprzedaż, top produkty, źródła ruchu
-      settings/                status integracji, lista kont admina
-  api/
-    checkout/route.ts          tworzy zamówienie (NEW/PENDING) + sesję Stripe Checkout
-    webhooks/stripe/route.ts   JEDYNE miejsce, które ustawia "Opłacone" i zmniejsza magazyn
-    discounts/validate/route.ts walidacja kodu rabatowego w koszyku
-    auth/[...nextauth]/route.ts logowanie admina (NextAuth, hasła bcrypt)
-lib/
-  prisma.ts, auth.ts, stripe.ts, inpost.ts, orders.ts, notifications.ts
-  actions/                    server actions panelu (produkty, zamówienia, rabaty)
-prisma/schema.prisma          pełny model danych
-scripts/create-admin.ts       jedyny sposób utworzenia konta administratora
-middleware.ts                 blokuje dostęp do /admin/* bez sesji
-```
+---
 
-## 2. Wymagane konta / usługi
-
-| Usługa | Po co | Koszt |
-|---|---|---|
-| **Supabase** (albo dowolny Postgres) | baza danych | darmowy plan wystarcza na start |
-| **Stripe** | płatności BLIK / Przelewy24 / karta / Apple Pay / Google Pay | prowizja od transakcji, bez abonamentu |
-| **InPost dla Biznesu (Manager Paczek)** | Geowidget (paczkomaty) + ShipX API (etykiety) | zależnie od umowy z InPost |
-| **Vercel** (albo inny hosting Next.js) | wdrożenie produkcyjne | darmowy plan wystarcza na start |
-| **Resend** (opcjonalnie) | e-mail z powiadomieniem o nowym zamówieniu | darmowy plan do kilkuset maili/mies. |
-
-## 3. Konfiguracja bazy danych (Supabase)
-
-1. Załóż projekt na supabase.com.
-2. Project Settings → Database → Connection string → skopiuj **URI** (tryb "Session" lub "Transaction pooler" — do Prisma Migrate użyj bezpośredniego połączenia, nie poolera na porcie 6543).
-3. Wklej jako `DATABASE_URL` w `.env`.
-4. Uruchom migrację (patrz punkt 6) — utworzy wszystkie tabele automatycznie z `prisma/schema.prisma`.
-
-Supabase daje też gotowe Row Level Security — na start aplikacja łączy się z bazą wyłącznie przez Prisma po stronie serwera (nigdy z przeglądarki), więc dane klientów i zamówień nie są nigdzie publicznie wystawione.
-
-## 4. Konfiguracja Stripe
-
-1. Załóż konto na stripe.com, włącz **BLIK** i **Przelewy24** w Dashboard → Settings → Payment methods (dostępne dla kont z siedzibą w PL/UE).
-2. Developers → API keys → skopiuj `Secret key` → `STRIPE_SECRET_KEY`, `Publishable key` → `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`.
-3. Developers → Webhooks → Add endpoint → URL: `https://twoja-domena.pl/api/webhooks/stripe`, zdarzenie: `checkout.session.completed` (i opcjonalnie `checkout.session.async_payment_succeeded/failed` — BLIK bywa asynchroniczny).
-4. Skopiuj `Signing secret` → `STRIPE_WEBHOOK_SECRET`.
-5. Do testów lokalnych: `stripe listen --forward-to localhost:3000/api/webhooks/stripe` (Stripe CLI).
-
-Apple Pay / Google Pay pojawiają się automatycznie na stronie Stripe Checkout dla zgodnych przeglądarek/urządzeń — nie wymagają osobnej integracji, tylko włączenia domeny w Stripe Dashboard → Settings → Payment methods → Apple Pay (weryfikacja domeny).
-
-## 5. Konfiguracja InPost
-
-**Geowidget (wybór Paczkomatu na checkoucie):**
-1. Załóż konto w Manager Paczek (InPost dla Biznesu).
-2. Wygeneruj publiczny token do Geowidgetu.
-3. Wklej jako `NEXT_PUBLIC_INPOST_GEOWIDGET_TOKEN`.
-
-**ShipX API (tworzenie przesyłek i etykiet z panelu zamówień):**
-1. W tym samym panelu wygeneruj token API (OAuth token organizacji).
-2. Wklej `INPOST_SHIPX_TOKEN` oraz `INPOST_ORGANIZATION_ID`.
-3. Zostaw `INPOST_ENV="sandbox"` do testów, zmień na `"production"` przy realnej wysyłce.
-
-Dopóki te zmienne nie są ustawione, `/admin/orders/[id]` pokaże przycisk generowania etykiety, ale próba użycia go zwróci czytelny błąd zamiast udawać sukces — zgodnie z założeniem "żadnej fikcyjnej integracji".
-
-## 6. Instrukcja uruchomienia (lokalnie)
+## Szybki start (lokalnie)
 
 ```bash
 npm install
-cp .env.example .env
-# uzupełnij .env wartościami z punktów 3–5
-
-npx prisma migrate dev --name init     # tworzy tabele w bazie
-npm run create-admin -- --email=ty@example.com --password="silne-haslo123" --name="Twoje imię"
-
-npm run dev                             # http://localhost:3000
+cp .env.example .env.local   # uzupełnij wartości
+npm run dev                  # http://localhost:3000
 ```
 
-Panel administracyjny: **http://localhost:3000/admin** → zaloguj się kontem utworzonym powyżej.
+Sklep **działa od razu** także bez bazy i Stripe — dane produktu z `lib/config/product.ts`
+(placeholdery `[CENA]`, `[NAZWA PERFUM]`…), checkout zwraca czytelny komunikat 503 zamiast
+udawać płatność. Aby włączyć prawdziwe zamówienia, uzupełnij sekcje „Podłączenie" poniżej.
 
-## 7. Utworzenie pierwszego (i kolejnych) kont administratora
+---
 
-Jedyny sposób to skrypt uruchamiany z serwera/lokalnie z dostępem do bazy —
-w aplikacji świadomie nie ma formularza rejestracji admina, więc żaden
-użytkownik sklepu nie może sam sobie nadać dostępu do panelu:
+## Struktura
 
-```bash
-npm run create-admin -- --email=agata@example.com --password="MocneHaslo123!" --name="Agata"
+```
+app/
+  (site)/            # publiczny sklep (ukryty route group — bez URL w adresie)
+    page.tsx         # strona główna: hero, historia, flakon 3D, cechy, zakup, CTA, kontakt
+    checkout/        # formularz zamówienia + przekierowanie do Stripe Checkout
+    success/         # strona po powrocie ze Stripe (NIE dowód płatności)
+    regulamin/ polityka-prywatnosci/ dostawa-i-platnosci/ zwroty/   # placeholdery prawne
+  admin/
+    login/           # logowanie hasłem (ADMIN_PASSWORD)
+    (panel)/         # pulpit, zamówienia (+ [id]), produkty, statystyki, ustawienia
+  api/
+    checkout/        # POST — utworzenie zamówienia + sesja Stripe Checkout
+    checkout/webhook/# Stripe webhook (jedyne źródło statusu płatności)
+    contact/         # POST — formularz kontaktowy
+components/
+  3d/                # PerfumeBottle3D, PlaceholderBottle, BottleScene, scrollStore
+  store/             # sekcje strony, koszyk (context + drawer), smooth scroll
+  checkout/          # formularz checkoutu
+  admin/             # komponenty panelu
+lib/
+  config/            # brand.ts (dane marki), product.ts (PRODUKT — tu uzupełniasz dane), shipping.ts
+  db/                # index.ts (pool, transakcje), repository.ts (cała logika SQL)
+  stripe/            # server.ts (instancja Stripe z env)
+  auth/              # admin.ts (sesja HMAC panelu)
+  validation/        # schemas.ts (Zod — wspólny front/back)
+supabase/schema.sql  # kompletne tabele + przykładowy wiersz produktu
 ```
 
-Uruchomienie z tym samym e-mailem drugi raz nadpisuje hasło (przydatne przy resecie).
+---
 
-## 8. Wdrożenie produkcyjne (skrót)
+## Podłączenie bazy (Supabase / PostgreSQL)
 
-1. Wypchnij repo na GitHub, zaimportuj w Vercel.
-2. Ustaw wszystkie zmienne z `.env.example` w Vercel → Project → Settings → Environment Variables.
-3. Zaktualizuj `NEXT_PUBLIC_APP_URL` i `NEXTAUTH_URL` na docelową domenę.
-4. Po pierwszym deployu podmień webhook URL w Stripe na produkcyjną domenę.
-5. `npx prisma migrate deploy` (albo dodaj to jako Vercel Build Command razem z `next build`).
-6. Uruchom `npm run create-admin` wskazując na produkcyjny `DATABASE_URL`.
+1. Stwórz projekt w Supabase (lub użyj własnego PostgreSQL).
+2. W **SQL Editorze** wklej i uruchom całą treść `supabase/schema.sql`
+   (tabele: `customers`, `products`, `orders`, `order_items` + indeksy + przykładowy produkt).
+3. Pobierz **connection string poolera transakcyjnego** (port `6543`, parametr
+   `pgbouncer=true`) i wpisz do `DATABASE_URL` (local `.env.local` oraz Vercel).
+4. Wejdź na `/admin` — zakładka *Produkty* pozwala edytować nazwę, cenę, opisy i stan.
 
-## 9. Rzeczy celowo NIE udawane, żeby były jasne
+Bez `DATABASE_URL` sklep nadal renderuje się z konfiguracji plikowej, a panel jasno
+informuje, że baza nie jest podłączona.
 
-- Zamówienie dostaje status **„Opłacone"** wyłącznie w `app/api/webhooks/stripe/route.ts`, po weryfikacji podpisu Stripe — nigdy przy samym powrocie na `/order-success`.
-- Magazyn zmniejsza się **tylko** w tym samym miejscu, transakcyjnie razem ze zmianą statusu płatności.
-- Panel `/admin` nie wyrenderuje żadnej strony bez ważnej sesji (middleware + drugi check server-side w layoucie).
-- Etykiety InPost i statystyki źródeł ruchu (Google/Instagram/reklamy) mają gotową warstwę integracji, ale realnie zadziałają dopiero po wpięciu kluczy API — do tego czasu zwracają jawny komunikat, nie fałszywe dane.
+---
+
+## Podłączenie płatności (Stripe)
+
+1. `STRIPE_SECRET_KEY` (sk_…) i `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (pk_…)
+   z *Developers → API keys*.
+2. *Developers → Webhooks → Add endpoint*:
+   - URL: `https://<twoj-domena>/api/checkout/webhook`
+   - zdarzenia: `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+     `checkout.session.async_payment_failed`
+   - skopiowany **Signing secret** (whsec_…) → `STRIPE_WEBHOOK_SECRET`.
+3. Lokalny test webhooka: `stripe listen --forward-to localhost:3000/api/checkout/webhook`.
+
+**Status płatności zmienia się wyłącznie w webhooku** (weryfikacja sygnatury + `payment_status`).
+Powrót użytkownika na `/success` NIE oznacza opłacenia zamówienia.
+
+---
+
+## Panel administracyjny
+
+- Adres: `/admin` (logowanie hasłem z `ADMIN_PASSWORD`; sesja — token HMAC podpisany
+  `AUTH_SECRET`, ważny 8 h).
+- Widoki: pulpit, **zamówienia** (zmiana statusu logistycznego; status płatności tylko z webhooka),
+  **produkty** (nazwa, cena, stan, opisy, nuty, aktywność), **statystyki**, **ustawienia**
+  (checklista zmiennych środowiskowych — bez ujawniania wartości).
+- Sesja jest bezstanowa (bezpieczna na Vercel/serverless).
+
+---
+
+## Uzupełnienie danych produktu (bez wymyślania)
+
+Wszystkie brakujące dane są oznaczone placeholderami i są **jednym plikiem** do edycji:
+`lib/config/product.ts` (albo panel `/admin/products` po podłączeniu bazy).
+
+`[NAZWA PERFUM]`, `[CENA]`, `[POJEMNOŚĆ]`, `[OPIS]`, `[OPIS ZAPACHU]`, `[NUTY ZAPACHOWE]`,
+`[CECHY]`, `[ZDJĘCIE PRODUKTU]`, `[DOSTĘPNOŚĆ]`. Ceny i dostawa: `lib/config/shipping.ts`.
+Treści prawne: wklej tekst do `app/(site)/<strona>/page.tsx`.
+
+Zdjęcie produktu: wrzuć plik do `public/images/` i wpisz ścieżkę w `images: [...]`
+(oraz `image_url` w bazie). Model 3D flakonu: podmień placeholder w
+`components/3d/PerfumeBottle3D.tsx` na plik GLB w `public/models/` (dynamiczny import,
+obsługa `DRACO`/rozmiaru — komponent jest już napisany pod podmianę).
+
+---
+
+## Wydajność i 3D
+
+- Scena 3D ładuje się **dynamicznie** (`next/dynamic`, `ssr: false`), rendering tylko gdy
+  sekcja jest w kadrze, `pixelRatio` ograniczone (1.5 mobile / 2 desktop), `frameloop="demand"`
+  poza animacjami.
+- `prefers-reduced-motion` wyłącza Lenis i animacje GSAP.
+- Sekcje poza viewportem nie renderują ciężkich elementów; obrazy przez `next/image`.
+
+---
+
+## Wdrożenie (GitHub + Vercel)
+
+1. `git add . && git commit -m "ZODARA PARFUMS — start" && git push` (repozytorium GitHub).
+2. Vercel → *Add New Project* → import repozytorium (wykrywa Next.js automatycznie).
+3. *Settings → Environment Variables* — ustaw wszystkie zmienne z `.env.example`
+   (produkcyjne `NEXT_PUBLIC_APP_URL`, klucze Stripe, `DATABASE_URL`, `ADMIN_PASSWORD`, `AUTH_SECRET`).
+4. Deploy. Po wdrożeniu: zaktualizuj URL webhooka Stripe na produkcyjny.
+
+---
+
+## Bezpieczeństwo
+
+- Żadnych sekretów w repozytorium (`.env*` w `.gitignore`).
+- Webhook Stripe zweryfikowany sygnaturą; płatność tylko z webhooka.
+- SQL wyłącznie parametryzowany (`pg`), walidacja Zod po stronie serwera niezależnie od UI.
+- Panel za tokenem HMAC; porównanie hasła w czasie stałym; cookie `httpOnly`.
+- Kontrola orygina żądania przy mutacjach (ten sam origin) + limity na polach formularzy.

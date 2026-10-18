@@ -1,0 +1,68 @@
+/* Prosty, czytelny motyw panelu — niezależny od motywu sklepu. */
+.admin-root {
+  background: #0e0f11;
+  color: #e8e6e1;
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+.admin-card {
+  background: #16181c;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 1.5rem;
+}
+.admin-input {
+  width: 100%;
+  background: #0e0f11;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 0.6rem 0.8rem;
+  color: inherit;
+  font-size: 0.9rem;
+}
+.admin-input:focus {
+  outline: none;
+  border-color: #c8a96a;
+}
+.admin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #c8a96a;
+  color: #141414;
+  border: none;
+  border-radius: 999px;
+  padding: 0.6rem 1.4rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.admin-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.admin-btn-ghost {
+  background: transparent;
+  color: #cfc9bd;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+.admin-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.admin-table th {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  color: #9a958c;
+  font-weight: 500;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.admin-table td {
+  padding: 0.7rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.admin-badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.admin-link { color: #cfc9bd; text-decoration: none; }
+.admin-link:hover { color: #c8a96a; }

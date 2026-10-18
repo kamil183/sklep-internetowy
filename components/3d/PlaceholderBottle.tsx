@@ -2,15 +2,11 @@
  * FLAKON 3D — LAVIÉRA (model proceduralny marki).
  *
  * Odwzorowuje realny kształt flakonu ze zdjęcia produktowego:
- * - prostokątny korpus z zaokrąglonymi krawędziami i fazowaniem,
- * - grube, W PEŁNI przezroczyste szkło (transmission) z dobrze widocznym dnem,
- * - naturalny, jasny płyn champagne — bez poświaty, przezroczysty na tyle,
- *   by przepuszczał światło; tafla u góry delikatna, nie „plastikowa",
- * - złote napisy jak na realnym flakonie: logo nad płynem oraz
- *   „EAU DE PARFUM" i „50 ml" w dolnej, czystej części szkła,
- * - krótka szyjka, złoty kołnierz i wysoka, polerowana złota zakrętka,
- *   która scrollem unosi się i odsłania atomizer,
- * - mgiełka „sprayu" pojawia się przy przechyle.
+ * prostokątny korpus z zaokrąglonymi krawędziami i fazowaniem,
+ * grube szkło z dobrze widocznym dnem, przezroczysty jasny (champagne)
+ * płyn z płaską taflą u góry, krótka szyjka, złoty kołnierz i wysoka,
+ * polerowana złota zakrętka, która scrollem unosi się i odsłania atomizer.
+ * Mgiełka „sprayu" pojawia się przy przechyle.
  *
  * Podmiana na model GLB: NEXT_PUBLIC_BOTTLE_MODEL_URL=/models/bottle.glb
  * (model może zawierać węzeł „Cap" — animacja zakrętki przełączy się na niego).
@@ -21,7 +17,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { sampleBottleState, scrollStore } from "./scrollStore";
 
-const CAP_BASE_Y = 1.2;
+const CAP_BASE_Y = 1.26;
 const CAP_LIFT = 1.05;
 const SPRAY_TILT = 0.55; // wartość rotZ odpowiadająca aplikacji
 const MIST_COUNT = 80;
@@ -32,19 +28,11 @@ const BODY_H = 1.9;
 const BODY_D = 0.86;
 const BODY_R = 0.1;
 
-/**
- * Płyn: dolna krawędź TUŻ NAD strefą napisów (jak na zdjęciu —
- * pod płynem jest czyste, grube szkło z „EAU DE PARFUM" / „50 ml").
- */
-const LIQUID_W = 1.36;
-const LIQUID_H = 1.32;
-const LIQUID_D = 0.68;
-const LIQUID_BOTTOM = -0.6;
-const LIQUID_Y = LIQUID_BOTTOM + LIQUID_H / 2;
-
-/** Napisy na przedniej szybie (tuż przy powierzchni szkła). */
-const FRONT_Z = BODY_D / 2 + 0.006;
-const GOLD_INK = "#C4A165";
+/** Wnętrze: płyn wypełnia dolne ~65% przestrzeni pod szkłem. */
+const LIQUID_W = 1.28;
+const LIQUID_H = 1.26;
+const LIQUID_D = 0.6;
+const LIQUID_Y = -BODY_H / 2 + 0.2 + LIQUID_H / 2; // 0.2 = grubość dna
 
 /**
  * Normals z załomami: wierzchołki leżące w tym samym miejscu są uśredniane
@@ -143,47 +131,6 @@ function mistGeometry() {
   return geo;
 }
 
-/** Ręczne rysowanie z rozstrzeloną spacją (letter-spacing nie jest wszędzie wspierany). */
-function trackedText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  cx: number,
-  cy: number,
-  tracking: number,
-) {
-  const chars = Array.from(text);
-  const widths = chars.map((ch) => ctx.measureText(ch).width);
-  const total = widths.reduce((a, b) => a + b, 0) + tracking * Math.max(chars.length - 1, 0);
-  let x = cx - total / 2;
-  chars.forEach((ch, i) => {
-    ctx.fillText(ch, x + widths[i] / 2, cy);
-    x += widths[i] + tracking;
-  });
-}
-
-/** Tekstura napisu na przezroczystym tle (złoty tusz jak na realnym flakonie). */
-function makeLabelTexture(
-  draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void,
-  w = 1024,
-  h = 512,
-) {
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d");
-  if (ctx) {
-    ctx.clearRect(0, 0, w, h);
-    draw(ctx, w, h);
-  }
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
-  tex.needsUpdate = true;
-  return tex;
-}
-
-const SERIF = "Georgia, 'Times New Roman', 'Liberation Serif', 'DejaVu Serif', serif";
-
 export function PlaceholderBottle({ lowPower }: { lowPower: boolean }) {
   const capRef = useRef<THREE.Group>(null);
   const mistRef = useRef<THREE.Points>(null);
@@ -194,57 +141,26 @@ export function PlaceholderBottle({ lowPower }: { lowPower: boolean }) {
     [],
   );
   const liquidGeo = useMemo(
-    () => extrudedBox(LIQUID_W, LIQUID_H, LIQUID_D, 0.09, 0.045),
+    () => extrudedBox(LIQUID_W, LIQUID_H, LIQUID_D, 0.14, 0.05),
     [],
   );
-  // Tafla płynu — cienka, w kolorze płynu (subtelny menisk, nie „plastikowa nakrywka")
+  // Tafla płynu — pozioma płytką, jaśniejsza, czytelnie zamyka ciecz
   const surfaceGeo = useMemo(() => {
-    const geo = extrudedBox(LIQUID_W - 0.02, LIQUID_D - 0.02, 0.02, 0.085, 0);
+    const geo = extrudedBox(LIQUID_W - 0.02, LIQUID_D - 0.02, 0.02, 0.13, 0);
     geo.rotateX(-Math.PI / 2);
     return geo;
   }, []);
   const mistGeo = useMemo(() => mistGeometry(), []);
 
-  // Napisy: logo nad płynem + „EAU DE PARFUM" / „50 ml" w dolnej części szkła.
-  const logoTex = useMemo(
-    () =>
-      makeLabelTexture((ctx, w, h) => {
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillStyle = GOLD_INK;
-        ctx.font = `500 148px ${SERIF}`;
-        trackedText(ctx, "LAVIÉRA", w / 2, h * 0.42, 18);
-        ctx.fillStyle = "#B8965B";
-        ctx.font = `italic 58px ${SERIF}`;
-        trackedText(ctx, "by Zodara Parfums", w / 2, h * 0.62, 1);
-      }),
-    [],
-  );
-  const bottomTex = useMemo(
-    () =>
-      makeLabelTexture((ctx, w, h) => {
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillStyle = GOLD_INK;
-        ctx.font = `500 82px ${SERIF}`;
-        trackedText(ctx, "EAU DE PARFUM", w / 2, h * 0.36, 30);
-        ctx.font = `500 74px ${SERIF}`;
-        trackedText(ctx, "50 ml", w / 2, h * 0.66, 4);
-      }),
-    [],
-  );
-
-  // Geometrie/tworzone ręcznie trzeba oddać — inaczej przy odmontowaniu zostają w pamięci.
+  // Geometrie tworzone ręcznie trzeba oddać — inaczej przy odmontowaniu zostają w pamięci.
   useEffect(
     () => () => {
       bodyGeo.dispose();
       liquidGeo.dispose();
       surfaceGeo.dispose();
       mistGeo.dispose();
-      logoTex.dispose();
-      bottomTex.dispose();
     },
-    [bodyGeo, liquidGeo, surfaceGeo, mistGeo, logoTex, bottomTex],
+    [bodyGeo, liquidGeo, surfaceGeo, mistGeo],
   );
 
   useFrame(() => {
@@ -266,49 +182,49 @@ export function PlaceholderBottle({ lowPower }: { lowPower: boolean }) {
   });
 
   // Szkło: pełne przepuszczenie światła z załamaniem — przy osłabionym
-  // sprzęcie tańszy, ale wciąż wyraźnie przezroczysty wariant (bez transmission).
+  // sprzęcie tańszy wariant (bez transmission).
   const glass = lowPower ? (
     <meshPhysicalMaterial
-      color="#FFFFFF"
-      roughness={0.05}
+      color="#F3F1EC"
+      roughness={0.08}
       metalness={0}
       clearcoat={1}
-      clearcoatRoughness={0.03}
-      envMapIntensity={1.6}
+      clearcoatRoughness={0.05}
+      envMapIntensity={1.5}
       transparent
-      opacity={0.18}
-      depthWrite={false}
+      opacity={0.42}
     />
   ) : (
     <meshPhysicalMaterial
       color="#ffffff"
       transmission={1}
-      thickness={0.8}
-      ior={1.5}
-      roughness={0.015}
+      thickness={0.65}
+      ior={1.52}
+      roughness={0.02}
       metalness={0}
       reflectivity={0.6}
       clearcoat={1}
       clearcoatRoughness={0.02}
       envMapIntensity={1.8}
-      attenuationColor="#F7F4EC"
-      attenuationDistance={8}
+      attenuationColor="#F4EEE2"
+      attenuationDistance={6}
       dispersion={0.1}
     />
   );
 
-  // Płyn: naturalny jasny champagne — bez emissive (to dawało „sztuczny" glow),
-  // przezroczysty na tyle, by światło przechodziło przez całą objętość.
+  // Płyn: jasny, delikatnie champagne — przezroczysty na tyle, by przepuszczał światło
   const liquid = (
     <meshPhysicalMaterial
-      color="#F6EAC8"
+      color="#F0DBA6"
       roughness={0.08}
       metalness={0}
-      clearcoat={0.9}
-      clearcoatRoughness={0.08}
-      envMapIntensity={1.7}
+      clearcoat={1}
+      clearcoatRoughness={0.05}
+      emissive="#B98C33"
+      emissiveIntensity={0.06}
+      envMapIntensity={1.3}
       transparent
-      opacity={0.82}
+      opacity={0.9}
     />
   );
 
@@ -321,50 +237,28 @@ export function PlaceholderBottle({ lowPower }: { lowPower: boolean }) {
     />
   );
 
-  // Złoty tusz odbijający światło (metaliczny, ale tylko na samych literach).
-  const ink = (map: THREE.Texture) => (
-    <meshStandardMaterial
-      map={map}
-      transparent
-      metalness={0.55}
-      roughness={0.34}
-      envMapIntensity={1.3}
-      side={THREE.FrontSide}
-    />
-  );
-
   return (
     <group>
-      {/* Korpus — prostokątne, w pełni przezroczyste szkło z fazowanymi krawędziami */}
+      {/* Korpus — prostokątne szkło z fazowanymi krawędziami */}
       <mesh geometry={bodyGeo}>{glass}</mesh>
 
-      {/* Płyn wewnątrz — jasny, naturalnie przepuszczający światło */}
+      {/* Płyn wewnątrz — jasny, czytelny przez szkło */}
       <mesh geometry={liquidGeo} position={[0, LIQUID_Y, 0]}>
         {liquid}
       </mesh>
 
-      {/* Tafla płynu — subtelny menisk w kolorze cieczy */}
+      {/* Tafla płynu */}
       <mesh geometry={surfaceGeo} position={[0, LIQUID_Y + LIQUID_H / 2, 0]}>
         <meshPhysicalMaterial
-          color="#FBF3DC"
-          roughness={0.06}
+          color="#F8EBC8"
+          roughness={0.05}
           metalness={0}
           clearcoat={1}
-          clearcoatRoughness={0.05}
-          envMapIntensity={1.3}
+          clearcoatRoughness={0.03}
+          envMapIntensity={1.5}
           transparent
-          opacity={0.62}
+          opacity={0.92}
         />
-      </mesh>
-
-      {/* Napisy na przedniej szybie — jak na realnym flakonie */}
-      <mesh position={[0, -0.04, FRONT_Z]}>
-        <planeGeometry args={[1.32, 0.66]} />
-        {ink(logoTex)}
-      </mesh>
-      <mesh position={[0, -0.77, FRONT_Z]}>
-        <planeGeometry args={[0.92, 0.4]} />
-        {ink(bottomTex)}
       </mesh>
 
       {/* Szyjka (szkło) */}
@@ -392,7 +286,7 @@ export function PlaceholderBottle({ lowPower }: { lowPower: boolean }) {
       {/* Zakrętka (animowana scrollem) — wysoki, polerowany cylinder */}
       <group ref={capRef} position={[0, CAP_BASE_Y, 0]}>
         <mesh position={[0, 0.34, 0]}>
-          <cylinderGeometry args={[0.33, 0.335, 0.74, 64]} />
+          <cylinderGeometry args={[0.33, 0.335, 0.68, 64]} />
           {gold(0.12)}
         </mesh>
         {/* Cienki jaśniejszy rant u dołu — miejsce, w którym kapelusz łapie światło */}
@@ -401,13 +295,13 @@ export function PlaceholderBottle({ lowPower }: { lowPower: boolean }) {
           {gold(0.2, "#E6C689")}
         </mesh>
         {/* Wieńczący dysk */}
-        <mesh position={[0, 0.748, 0]}>
+        <mesh position={[0, 0.688, 0]}>
           <cylinderGeometry args={[0.325, 0.33, 0.04, 64]} />
           {gold(0.16, "#E9CD97")}
         </mesh>
       </group>
 
-      {/* Mgiełka „sprayu\" — pojawia się przy przechyle */}
+      {/* Mgiełka „sprayu" — pojawia się przy przechyle */}
       <points ref={mistRef} geometry={mistGeo} position={[0, 1.6, 0]} visible={false}>
         <pointsMaterial
           ref={mistMatRef}

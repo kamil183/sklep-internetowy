@@ -1,63 +1,78 @@
-import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { deleteProduct } from "@/lib/actions/products";
+import type { Metadata } from "next";
+import { Boxes } from "lucide-react";
+import { listProducts } from "@/lib/db/repository";
+import { dbReady, DB_OFFLINE_NOTICE } from "@/lib/admin/guard";
+import { PRODUCT } from "@/lib/config/product";
+import ProductEditor from "@/components/admin/ProductEditor";
 
-export const revalidate = 0;
+export const metadata: Metadata = { title: "Produkty" };
+export const dynamic = "force-dynamic";
 
 export default async function AdminProductsPage() {
-  const products = await prisma.product.findMany({
-    include: { images: { take: 1, orderBy: { position: "asc" } }, category: true },
-    orderBy: { createdAt: "desc" },
-  });
+  if (!dbReady()) {
+    return (
+      <div className="space-y-6">
+        <h1 className="font-display text-3xl">Produkty</h1>
+        <div className="rounded-xl border border-warning/40 bg-warning/10 p-5 text-sm text-warm-300">
+          <p className="mb-1 font-semibold text-warning">Edycja produktu wymaga bazy danych.</p>
+          <p className="text-warm-500">{DB_OFFLINE_NOTICE}</p>
+        </div>
+        <div className="admin-card">
+          <p className="mb-4 flex items-center gap-2 text-[11px] uppercase tracking-widest text-warm-500">
+            <Boxes className="h-4 w-4" aria-hidden /> Produkt z konfiguracji (tylko do odczytu)
+          </p>
+          <dl className="grid gap-3 text-sm sm:grid-cols-2">
+            <Row label="Slug" value={PRODUCT.slug} />
+            <Row label="Marka" value={PRODUCT.brand} />
+            <Row label="Nazwa" value={PRODUCT.name ?? "[NAZWA PERFUM]"} />
+            <Row label="Cena" value={PRODUCT.priceCents !== null ? `${(PRODUCT.priceCents / 100).toFixed(2)} zł` : "[CENA]"} />
+            <Row label="Pojemność" value={PRODUCT.volume ?? "[POJEMNOŚĆ]"} />
+            <Row label="Aktywny" value={PRODUCT.isActive ? "Tak" : "Nie"} />
+          </dl>
+          <p className="mt-5 text-[11px] text-warm-600">
+            Aby edytować te wartości bez bazy, zmień je w <code className="text-warm-300">lib/config/product.ts</code>.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const products = await listProducts();
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="font-display text-2xl">Produkty</h1>
-        <Link href="/admin/products/new" className="btn-primary">+ Dodaj produkt</Link>
+    <div className="space-y-8">
+      <div>
+        <h1 className="font-display text-3xl">Produkty</h1>
+        <p className="mt-1 text-sm text-warm-500">Edycja danych produktu widocznych w sklepie.</p>
       </div>
+      {products.length === 0 ? (
+        <div className="admin-card text-center text-sm text-warm-500">
+          Brak produktów w bazie. Uruchom SQL z <code className="text-warm-300">supabase/schema.sql</code>,
+          aby dodać produkt startowy.
+        </div>
+      ) : (
+        products.map((product) => (
+          <section key={product.id} className="admin-card">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <p className="font-display text-xl text-gold">{product.name ?? "[NAZWA PERFUM]"}</p>
+                <p className="text-xs text-warm-500">slug: {product.slug}</p>
+              </div>
+              <span className="admin-badge">{product.isActive ? "AKTYWNY" : "NIEAKTYWNY"}</span>
+            </div>
+            <ProductEditor product={product} />
+          </section>
+        ))
+      )}
+    </div>
+  );
+}
 
-      <div className="card overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-creamdim border-b border-line">
-              <th className="p-4">Produkt</th>
-              <th className="p-4">Kategoria</th>
-              <th className="p-4">Cena</th>
-              <th className="p-4">Stan</th>
-              <th className="p-4">Status</th>
-              <th className="p-4"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((p) => (
-              <tr key={p.id} className="border-b border-line last:border-0">
-                <td className="p-4 flex items-center gap-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={p.images[0]?.url ?? ""} alt="" className="w-10 h-10 rounded object-cover bg-bg2" />
-                  <Link href={`/admin/products/${p.id}/edit`} className="hover:text-amber">{p.name}</Link>
-                </td>
-                <td className="p-4 text-creamdim">{p.category?.name ?? "—"}</td>
-                <td className="p-4">{(p.priceCents / 100).toFixed(2)} zł</td>
-                <td className="p-4">{p.stock}</td>
-                <td className="p-4">
-                  <span className={`text-xs border rounded px-2 py-1 ${p.isActive ? "text-amber border-amberdim" : "text-creamdim border-line"}`}>
-                    {p.isActive ? "Aktywny" : "Ukryty"}
-                  </span>
-                </td>
-                <td className="p-4 text-right">
-                  <form action={deleteProduct.bind(null, p.id)}>
-                    <button className="text-xs text-red-400 hover:underline">Usuń</button>
-                  </form>
-                </td>
-              </tr>
-            ))}
-            {products.length === 0 && (
-              <tr><td colSpan={6} className="p-6 text-center text-creamdim">Brak produktów. Dodaj pierwszy.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-[11px] uppercase tracking-widest text-warm-600">{label}</dt>
+      <dd className="text-warm-300">{value}</dd>
     </div>
   );
 }

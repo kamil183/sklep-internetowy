@@ -1,148 +1,203 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* ============================================================
- * MOTYW ZODARA PARFUMS (LAVIÉRA)
- * Jasny / ciemny, beżowy, przyjazny układ.
+ * Motyw ZODARA PARFUMS — odwzorowany na masaru.pl:
+ * jasna strona (kremowa biel), atramentowy bordowy tekst,
+ * font Newsreader (serif) + Syncopate (etykiety wersalikami).
  * ============================================================ */
 
-@layer base {
-  html {
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
+@theme {
+  /* --- Fonty --- */
+  --font-body: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-label: "Syncopate", ui-sans-serif, system-ui, sans-serif;
 
-  body {
-    @apply bg-bg text-cream;
-    overflow-x: hidden;
-  }
+  /* --- Kolory (paleta masaru.pl) --- */
+  --color-ink: #230b13; /* atrament — tekst i ciemne panele */
+  --color-cream: #f2f0e6; /* tło strony / jasny tekst na ciemnym */
+  --color-shell: #f2e8dc;
+  --color-sand: #e9d9c9;
+  --color-creamdim: #6e655b; /* wyszarzony tekst pomocniczy */
+  --color-gold: #97754a;
+  --color-gold-300: #c9a96a;
+  --color-gold-400: #b08d4f;
+  --color-line: #e3ddce; /* cienkie linie na jasnym tle */
+  --color-panel: #faf8f2;
+  --color-warning: #b45309;
 
-  ::selection {
-    @apply bg-gold text-bg;
-  }
+  /* Skala ciepłych szarości — czytelna na jasnym tle */
+  --color-warm-300: #453e37;
+  --color-warm-500: #645b52;
+  --color-warm-600: #7a7168;
+  --color-warm-800: #d9d0c1;
 
-  ::-webkit-scrollbar {
-    width: 10px;
-  }
-  ::-webkit-scrollbar-track {
-    background: #efe8dc;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: #c9bda9;
-    border: 2px solid #efe8dc;
-    border-radius: 999px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: #a86f4c;
-  }
+  /* Jasne panele (dawniej ciemne onyxy) */
+  --color-onyx-900: #efe9dd;
+  --color-onyx-950: #f6f1e7;
+
+  /* Komunikaty — czytelne na jasnym tle */
+  --color-rose-200: #9f1239;
+  --color-red-300: #b91c1c;
 }
 
-@layer components {
-  .btn-primary {
-    @apply inline-flex cursor-pointer items-center justify-center gap-3 border border-gold bg-gold px-9 py-4 text-[11px] font-medium uppercase tracking-[0.3em] text-bg transition-all duration-300 hover:bg-transparent hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-50;
-  }
-
-  .btn-ghost,
-  .btn-outline {
-    @apply inline-flex cursor-pointer items-center justify-center gap-3 border border-line px-9 py-4 text-[11px] font-medium uppercase tracking-[0.3em] text-cream transition-all duration-300 hover:border-gold hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-50;
-  }
-
-  .input-field {
-    @apply w-full border-b border-line bg-transparent py-3 text-sm text-cream transition outline-none placeholder:text-creamdim focus:border-gold;
-  }
-
-  .section-label {
-    @apply mb-6 flex items-center gap-4 text-[11px] uppercase tracking-[0.4em] text-gold;
-  }
-
-  .section-label::before {
-    content: "";
-    @apply block h-px w-10 bg-gold;
-  }
-
-  .card {
-    @apply border border-line bg-panel backdrop-blur-md;
-  }
-
-  .label {
-    @apply text-[11px] font-medium uppercase tracking-[0.3em] text-gold;
-  }
+:root {
+  --content-width: 80rem;
 }
 
-/* ============================================================
- * TŁO HERO — warstwa 1: .hero-sky (ciemny gradient nocnego nieba)
- * warstwa 2: .hero-sky-video — public/videos/hero-sky.mp4 (pętla bezszwowa)
- * warstwa 3: .hero-sky-veil / .hero-sky-scrim — czytelność tekstu i wygaszenie
- * ============================================================ */
-.hero-sky-wrap {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
+/* ---------- Podstawy ---------- */
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-.hero-sky {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(75% 50% at 50% 12%, rgba(255, 214, 190, 0.45) 0%, rgba(255, 214, 190, 0) 65%),
-    linear-gradient(180deg, #8fa7c9 0%, #c9a8b8 32%, #e8b7a5 56%, #f6f1e9 82%);
+body {
+  background-color: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-body);
 }
 
-.hero-sky-video {
-  position: absolute;
-  inset: 0;
+::selection {
+  background: var(--color-ink);
+  color: var(--color-cream);
+}
+
+/* Delikatny pasek przewijania w duchu masaru.pl */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-cream);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-sand);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gold);
+}
+
+/* ---------- Komponenty ---------- */
+
+/* Główny przycisk — jak „Kup teraz" na masaru.pl */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background: var(--color-ink);
+  color: var(--color-cream);
+  padding: 0.95rem 1.9rem;
+  font-family: var(--font-label);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  border: 1px solid var(--color-ink);
+  transition:
+    background-color 0.5s ease,
+    color 0.5s ease,
+    border-color 0.5s ease;
+}
+.btn-primary:hover {
+  background: transparent;
+  color: var(--color-ink);
+}
+
+/* Przycisk drugorzędny */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background: transparent;
+  color: var(--color-ink);
+  padding: 0.95rem 1.9rem;
+  font-family: var(--font-label);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  border: 1px solid color-mix(in srgb, var(--color-ink) 35%, transparent);
+  transition:
+    background-color 0.5s ease,
+    color 0.5s ease,
+    border-color 0.5s ease;
+}
+.btn-ghost:hover {
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+  color: var(--color-cream);
+}
+
+/* Etykieta sekcji — wersaliki Syncopate z cienką linią przed tekstem */
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-family: var(--font-label);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.32em;
+  color: color-mix(in srgb, var(--color-ink) 75%, transparent);
+}
+.section-label::before {
+  content: "";
+  display: block;
+  width: 2.5rem;
+  height: 1px;
+  background: var(--color-gold);
+  flex-shrink: 0;
+}
+
+/* Krótka etykieta wewnątrz sekcji */
+.label {
+  font-family: var(--font-label);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  color: color-mix(in srgb, var(--color-ink) 60%, transparent);
+}
+
+/* Karta produktowa / treściowa */
+.card {
+  background: #ffffff;
+  border: 1px solid var(--color-line);
+  border-radius: 1.25rem;
+}
+
+/* Pola formularzy */
+.input-field {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 42%;
-  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 72%, rgba(0, 0, 0, 0.5) 84%, rgba(0, 0, 0, 0) 95%);
-  mask-image: linear-gradient(180deg, #000 0%, #000 72%, rgba(0, 0, 0, 0.5) 84%, rgba(0, 0, 0, 0) 95%);
+  background: #ffffff;
+  border: 1px solid var(--color-line);
+  padding: 0.8rem 1rem;
+  font-size: 0.9rem;
+  color: var(--color-ink);
+  transition: border-color 0.35s ease;
+}
+.input-field::placeholder {
+  color: color-mix(in srgb, var(--color-ink) 35%, transparent);
+}
+.input-field:focus {
+  outline: none;
+  border-color: var(--color-gold);
 }
 
-.hero-sky-scrim {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  background: #f6f1e9;
+.field-error {
+  font-size: 0.85rem;
+  color: var(--color-red-300);
 }
 
-.hero-sky-veil {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(180deg, rgba(246, 241, 233, 0.42) 0%, rgba(246, 241, 233, 0) 34%),
-    linear-gradient(0deg, rgba(246, 241, 233, 0.16) 0%, rgba(246, 241, 233, 0) 24%);
+/* Tekst logiczny typu kod/zmienna */
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
 }
 
-/* ============================================================
- * KRĘCĄCY SIĘ NAPIS (components/BrandSpinner.tsx)
- * zamiast flakonu 3D — dwa pierścienie SVG w przeciwne strony
- * ============================================================ */
-@keyframes brand-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@keyframes brand-spin-rev {
-  to {
-    transform: rotate(-360deg);
-  }
-}
-.brand-spinner .ring-spin,
-.brand-spinner .ring-spin-reverse {
-  transform-box: view-box;
-  transform-origin: 100px 100px;
-}
-.brand-spinner .ring-spin {
-  animation: brand-spin 44s linear infinite;
-}
-.brand-spinner .ring-spin-reverse {
-  animation: brand-spin-rev 64s linear infinite;
-}
 @media (prefers-reduced-motion: reduce) {
-  .brand-spinner .ring-spin,
-  .brand-spinner .ring-spin-reverse {
-    animation: none;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

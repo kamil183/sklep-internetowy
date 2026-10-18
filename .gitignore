@@ -1,10 +1,18 @@
-node_modules
-.next
+# dependencies / build
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# env — nigdy w gicie
 .env
 .env.local
-*.pem
-npm-debug.log*
+.env.*.local
+
+# vercel
+.vercel/
+
+# system
 .DS_Store
-tsconfig.tsbuildinfo
-.vercel
-.env*
+npm-debug.log*
