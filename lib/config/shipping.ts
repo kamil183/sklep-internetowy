@@ -11,8 +11,8 @@ export interface ShippingMethod {
 }
 
 export const SHIPPING_METHODS: ShippingMethod[] = [
-  { id: "INPOST_LOCKER", label: "Paczkomat", priceCents: null },
-  { id: "INPOST_COURIER", label: "Kurier", priceCents: null },
+  { id: "INPOST_LOCKER", label: "Paczkomat", priceCents: 1149 },
+  { id: "INPOST_COURIER", label: "Kurier", priceCents: 1499 },
 ];
 
 export function getShippingMethod(id: string): ShippingMethod | undefined {
