@@ -96,7 +96,10 @@ export default function Footer() {
           <p>
             © {new Date().getFullYear()} {BRAND.name} · Made with love and passion.
           </p>
-          <p>{BRAND.slogan}</p>
+          <div className="flex flex-col gap-2 text-right md:flex-row md:items-center md:gap-4">
+            <p>{BRAND.slogan}</p>
+            <p className="text-warm-400">made by Webilo</p>
+          </div>
         </div>
       </div>
     </footer>
