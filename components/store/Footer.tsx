@@ -1,5 +1,4 @@
 import Link from "next/link";
-import NewsletterForm from "@/components/newsletter-form";
 import { BRAND } from "@/lib/config/brand";
 
 /**
@@ -78,17 +77,6 @@ export default function Footer() {
                 </span>
               </li>
             </ul>
-          </div>
-
-          {/* Newsletter */}
-          <div>
-            <h3 className="mb-5 font-label text-[10px] uppercase tracking-[0.3em] text-gold">
-              Newsletter
-            </h3>
-            <p className="mb-4 text-sm text-warm-300">
-              Pierwsza wiadomość o premierach, limitowanych edycjach i promocjach — prosto na Twoją skrzynkę.
-            </p>
-            <NewsletterForm />
           </div>
         </div>
 
