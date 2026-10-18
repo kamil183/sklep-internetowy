@@ -33,10 +33,8 @@ export function getPool(): Pool {
       max: 10,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 10_000,
-      ssl: connectionString.includes("sslmode=disable")
-        ? false
-        : { rejectUnauthorized: false },
-    });
+      ssl: { rejectUnauthorized: false },
+    } as any);
   }
   return pool;
 }
