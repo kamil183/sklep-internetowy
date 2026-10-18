@@ -73,6 +73,12 @@ create index if not exists order_items_order_id_idx on order_items (order_id);
 -- ---------- PRZYKŁADOWY WIERSZ PRODUKTU (jeden produkt sklepu) ----------
 -- Wartości zostawione puste świadomie — uzupełnij przez panel /admin/products
 -- albo bezpośrednio w tabeli (nazwa, cena, opis, zdjęcie).
-insert into products (slug, name, price_cents, volume, description, scent_story, notes, stock, is_active)
-values ('zodara-parfums', null, null, null, null, null, '[]'::jsonb, 0, true)
-on conflict (slug) do nothing;
+insert into products (id, slug, name, price_cents, volume, description, scent_story, notes, stock, is_active)
+values ('zodara-1', 'zodara-parfums', 'LAVIÉRA', 38999, '50 ml', 'LAVIÉRA to kompozycja stworzona dla kobiety, która nie musi wybierać między delikatnością a zmysłowością. Otula skórę miękkim, kremowym aromatem.', 'LAVIÉRA nie opowiada o kobiecości w oczywisty sposób. Pozwala ją poczuć.', '["Miękki", "Kremowy", "Zmysłowy"]'::jsonb, 10, true)
+on conflict (slug) do update set
+  name = excluded.name,
+  price_cents = excluded.price_cents,
+  volume = excluded.volume,
+  stock = excluded.stock,
+  is_active = excluded.is_active,
+  updated_at = now();

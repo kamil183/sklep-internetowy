@@ -52,12 +52,50 @@ export async function POST(req: Request) {
   }
 
   // 3. Produkt i cena (jeden produkt sklepu)
-  const dbProduct = await resolveCheckoutProduct(input.items[0].productId).catch(() => null);
+  let dbProduct = await resolveCheckoutProduct(input.items[0].productId).catch(() => null);
+  // If DB configured but product not found, try to ensure it exists
   if (!dbProduct && isDatabaseConfigured()) {
-    return json(
-      "Brak produktu w bazie — uruchom SQL z pliku supabase/schema.sql (albo uzupełnij produkt w panelu /admin/products).",
-      409,
-    );
+    try {
+      // Try to find by slug again or insert from config
+      const { getPool } = await import("@/lib/db/index");
+      const res = await getPool().query(
+        `insert into products (id, slug, name, price_cents, volume, description, scent_story, notes, stock, is_active)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         on conflict (slug) do update set updated_at = now()
+         returning *`,
+        [
+          PRODUCT.id,
+          PRODUCT.slug,
+          PRODUCT.name,
+          PRODUCT.priceCents,
+          PRODUCT.volume,
+          PRODUCT.description,
+          PRODUCT.scent.story,
+          JSON.stringify(PRODUCT.scent.notes || []),
+          10,
+          PRODUCT.isActive,
+        ]
+      );
+      if (res.rows[0]) {
+        dbProduct = {
+          id: res.rows[0].id,
+          slug: res.rows[0].slug,
+          name: res.rows[0].name,
+          priceCents: res.rows[0].price_cents,
+          volume: res.rows[0].volume,
+          description: res.rows[0].description,
+          scentStory: res.rows[0].scent_story,
+          notes: Array.isArray(res.rows[0].notes) ? res.rows[0].notes : [],
+          stock: res.rows[0].stock,
+          isActive: res.rows[0].is_active,
+          imageUrl: res.rows[0].image_url,
+          createdAt: res.rows[0].created_at?.toISOString(),
+          updatedAt: res.rows[0].updated_at?.toISOString(),
+        } as any;
+      }
+    } catch (e) {
+      console.error("Failed to ensure product exists:", e);
+    }
   }
 
   const knownIds = new Set([PRODUCT.id, dbProduct?.id].filter(Boolean) as string[]);
