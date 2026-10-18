@@ -300,52 +300,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ================== PRODUKT (SKLEP JEDNOPRODUKTOWY) ==================
-          Sklep sprzedaje jeden produkt, więc zamiast siatki „wyróżnionych
-          produktów" pokazujemy pojedynczy kafelek z odnośnikiem do strony. */}
-      <section data-bottle className="mx-auto max-w-7xl px-6 md:px-10 py-20">
-        <div className="mb-10">
-          <p className="section-label">Sklep</p>
-          <h2 className="font-display text-2xl md:text-3xl">Jeden zapach. Jeden flakon.</h2>
-        </div>
-
-        {product ? (
-          <Link
-            href={`/products/${product.slug}`}
-            className="card group grid items-center gap-8 p-6 md:grid-cols-[minmax(0,320px)_1fr] md:p-10"
-          >
-            <figure className="relative aspect-[3/4] overflow-hidden border border-line bg-bg2">
-              <Image
-                src={product.images[0]?.url ?? "/images/laviera-flakon.jpg"}
-                alt={product.name}
-                width={1024}
-                height={1536}
-                className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.03]"
-              />
-            </figure>
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.35em] text-gold">
-                Eau de Parfum · 50 ml
-              </p>
-              <h3 className="mt-3 font-display text-4xl font-light md:text-5xl">
-                {product.name}
-              </h3>
-              <p className="mt-4 max-w-md text-sm leading-relaxed text-creamdim">
-                {COPY.character}
-              </p>
-              <p className="mt-6 font-display text-3xl text-gold">
-                {(product.priceCents / 100).toFixed(2)} zł
-              </p>
-              <span className="btn-primary mt-8 inline-block">Zobacz produkt</span>
-            </div>
-          </Link>
-        ) : (
-          <p className="text-sm text-creamdim">
-            Produkt właśnie powstaje — wróć niedługo albo napisz do nas przez kontakt w stopce.
-          </p>
-        )}
-      </section>
-
       {/* ============================== CTA ============================== */}
       <section data-bottle className="mx-auto max-w-7xl px-6 md:px-10 py-24 text-center border-t border-line">
         <Reveal>
