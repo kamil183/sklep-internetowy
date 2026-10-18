@@ -1,4 +1,5 @@
 import Link from "next/link";
+import NewsletterForm from "@/components/newsletter-form";
 import { BRAND } from "@/lib/config/brand";
 
 /**
@@ -19,7 +20,7 @@ export default function Footer() {
   return (
     <footer className="relative z-10 bg-white text-ink">
       <div className="mx-auto w-full max-w-[120rem] px-5 pt-20 pb-10 md:px-8 md:pt-24">
-        <div className="grid gap-12 border-t border-line pt-14 md:grid-cols-3">
+        <div className="grid gap-12 border-t border-line pt-14 md:grid-cols-2 lg:grid-cols-4">
           {/* Marka */}
           <div>
             <p className="font-display text-2xl tracking-[0.35em] md:text-3xl">ZODARA</p>
@@ -77,6 +78,17 @@ export default function Footer() {
                 </span>
               </li>
             </ul>
+          </div>
+
+          {/* Newsletter */}
+          <div>
+            <h3 className="mb-5 font-label text-[10px] uppercase tracking-[0.3em] text-gold">
+              Newsletter
+            </h3>
+            <p className="mb-4 text-sm text-warm-300">
+              Pierwsza wiadomość o premierach, limitowanych edycjach i promocjach — prosto na Twoją skrzynkę.
+            </p>
+            <NewsletterForm />
           </div>
         </div>
 
