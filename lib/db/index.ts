@@ -28,14 +28,16 @@ export function getPool(): Pool {
   if (!connectionString) throw new DatabaseNotConfiguredError();
 
   if (!pool) {
-    // Try to fix SSL issues
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+    const isSupabase = connectionString.includes('pooler.supabase.com') || connectionString.includes('supabase.com');
+    if (isSupabase) {
+      process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+    }
     pool = new Pool({
       connectionString,
       max: 10,
       idleTimeoutMillis: 30_000,
-      connectionTimeoutMillis: 10_000,
-      ssl: false,
+      connectionTimeoutMillis: 5000,
+      ssl: isSupabase ? true : undefined,
     });
   }
   return pool;
