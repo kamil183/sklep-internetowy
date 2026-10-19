@@ -195,6 +195,7 @@ export async function POST(req: Request) {
           },
         },
       ],
+      allowed_payment_method_types: ["card", "blik", "p24"],
       metadata: { orderId, orderNumber },
       success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/checkout?canceled=1`,
