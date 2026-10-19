@@ -223,6 +223,7 @@ interface OrderRow {
   shipping_address: unknown;
   status: string;
   payment_status: string;
+  payment_method: string | null;
   stripe_checkout_session_id: string | null;
   created_at: Date;
   updated_at: Date;
@@ -246,6 +247,7 @@ function mapOrder(row: OrderRow, items: OrderItem[] = [], customer?: Customer): 
         : null,
     status: row.status as OrderStatus,
     paymentStatus: row.payment_status as Order["paymentStatus"],
+    paymentMethod: (row.payment_method as Order["paymentMethod"]) ?? "stripe",
     stripeCheckoutSessionId: row.stripe_checkout_session_id,
     createdAt: date(row.created_at),
     updatedAt: date(row.updated_at),
@@ -270,18 +272,22 @@ export interface CreateOrderInput {
   deliveryMethod: DeliveryMethod;
   lockerCode: string | null;
   shippingAddress: { street: string; postCode: string; city: string };
+  paymentMethod?: "stripe" | "cod";
 }
 
 export async function createOrder(input: CreateOrderInput): Promise<Order> {
   return withTransaction(async (client) => {
     const orderNumber = await nextOrderNumber(client);
     const totalCents = input.subtotalCents + input.shippingCents;
+    const paymentMethod = input.paymentMethod ?? "stripe";
+    // Pobranie nie „czeka na płatność" — pieniądze są zbierane przy odbiorze.
+    const paymentStatus = paymentMethod === "cod" ? "ON_DELIVERY" : "PENDING";
 
     const orderRes = await client.query<OrderRow>(
       `insert into orders
          (order_number, customer_id, subtotal_cents, shipping_cents, total_cents,
-          delivery_method, locker_code, shipping_address)
-       values ($1,$2,$3,$4,$5,$6,$7,$8)
+          delivery_method, locker_code, shipping_address, payment_method, payment_status)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
        returning *`,
       [
         orderNumber,
@@ -292,6 +298,8 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
         input.deliveryMethod,
         input.lockerCode,
         JSON.stringify(input.shippingAddress),
+        paymentMethod,
+        paymentStatus,
       ],
     );
     const orderRow = orderRes.rows[0];
@@ -447,6 +455,39 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus): P
     [orderId, status],
   );
   if (!res.rows[0]) throw new Error("Zamówienie nie istnieje.");
+  return mapOrder(res.rows[0]);
+}
+
+export async function updateOrderPaymentMethod(
+  orderId: string,
+  paymentMethod: "stripe" | "cod",
+): Promise<Order> {
+  const res = await getPool().query<OrderRow>(
+    "update orders set payment_method = $2, updated_at = now() where id = $1 returning *",
+    [orderId, paymentMethod],
+  );
+  if (!res.rows[0]) throw new Error("Zamówienie nie istnieje.");
+  return mapOrder(res.rows[0]);
+}
+
+/**
+ * Ręczne potwierdzenie pobrania — jedyne miejsce, w którym właścicielka
+ * może oznaczyć płatność jako otrzymaną. Warunek `payment_method = 'cod'`
+ * blokuje ręczne „opłacenie" zamówienia Stripe, które potwierdza wyłącznie
+ * webhook (sygnatura + event od Stripe).
+ */
+export async function confirmCashPayment(orderId: string): Promise<Order> {
+  const res = await getPool().query<OrderRow>(
+    `update orders
+        set payment_status = 'PAID',
+            updated_at = now()
+      where id = $1 and payment_method = 'cod'
+      returning *`,
+    [orderId],
+  );
+  if (!res.rows[0]) {
+    throw new Error("To nie jest zamówienie za pobraniem (albo nie istnieje).");
+  }
   return mapOrder(res.rows[0]);
 }
 

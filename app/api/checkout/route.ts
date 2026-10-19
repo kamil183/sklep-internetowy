@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       503,
     );
   }
-  if (!isStripeConfigured()) {
+  if ((input.payment?.method ?? "stripe") !== "cod" && !isStripeConfigured()) {
     return json(
       "Płatności nie są jeszcze skonfigurowane: ustaw STRIPE_SECRET_KEY (Stripe Dashboard → Developers → API keys).",
       503,
@@ -128,12 +128,20 @@ export async function POST(req: Request) {
       409,
     );
   }
+  // Pobranie = gotówka przekazana kurierowi; paczkomat tego nie obsługuje.
+  if ((input.payment?.method ?? "stripe") === "cod" && !shipping.codAvailable) {
+    return json(
+      "Za pobraniem jest dostępne tylko przy dostawie kurierem. Wybierz kuriera albo płatność online.",
+      400,
+    );
+  }
 
   // 5. Zapis zamówienia w bazie
   let orderId: string;
   let orderNumber: string;
   try {
     const customer = await findCustomerOrCreate(input.customer);
+    const paymentMethod = input.payment?.method ?? "stripe";
     const order = await createOrder({
       customerId: customer.id,
       items: [
@@ -152,21 +160,30 @@ export async function POST(req: Request) {
         postCode: input.delivery.postCode,
         city: input.delivery.city,
       },
+      paymentMethod,
     });
     orderId = order.id;
     orderNumber = order.orderNumber;
   } catch (error) {
     if (error instanceof DatabaseNotConfiguredError) return json(error.message, 503);
     console.error("[checkout] błąd zapisu zamówienia:", error);
-    console.error("[checkout] błąd zapisu zamówienia:", error);
     return json("Nie udało się zapisać zamówienia. Spróbuj ponownie.", 500);
   }
 
-  // 6. Sesja Stripe Checkout (prawdziwe przekierowanie płatnicze)
+  // 6. Obsługa płatności
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(req.url).origin;
+  const paymentMethod = input.payment?.method ?? "stripe";
+
+  if (paymentMethod === "cod") {
+    // Płatność przy odbiorze — bez sesji Stripe. Zamówienie jest już zapisane
+    // z payment_method = 'cod' i payment_status = 'ON_DELIVERY'.
+    return NextResponse.json({ ok: true, url: `${appUrl}/success?order_id=${orderId}&cod=1` });
+  }
+
+  // Płatność online przez Stripe
   const stripe = getStripe();
   if (!stripe) return json("Stripe nie jest skonfigurowany.", 503);
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(req.url).origin;
   const productName = dbProduct?.name ?? PRODUCT.name ?? PRODUCT.brand;
 
   try {

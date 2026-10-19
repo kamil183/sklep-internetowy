@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/admin";
 import {
   DatabaseNotConfiguredError,
+  confirmCashPayment,
   updateOrderStatus,
   updateProduct,
 } from "@/lib/db/repository";
@@ -109,7 +110,30 @@ export async function setOrderStatusAction(
   return { ok: true };
 }
 
-/** Akcja pod useActionState w formularzu statusu (orderId z inputu ukrytego). */
+/**
+ * Potwierdzenie zapłaty za pobraniem (pieniądze odebrane przy dostawie).
+ * Tylko dla zamówień COD — Stripe potwierdza wyłącznie webhook.
+ */
+export async function markCashPaymentReceived(
+  orderId: string,
+): Promise<ActionResult> {
+  await requireAdmin();
+
+  if (!orderId) return { ok: false, error: "Brak identyfikatora zamówienia." };
+
+  try {
+    await confirmCashPayment(orderId);
+  } catch (error) {
+    return { ok: false, error: errorMessage(error, "Nie udało się potwierdzić płatności.") };
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/orders");
+  revalidatePath(`/admin/orders/${orderId}`);
+  return { ok: true };
+}
+
+/** Starsza wersja akcji pod useActionState — zachowana dla zgodności. */
 export async function setOrderStatusFormAction(
   _prevState: ActionResult | null,
   formData: FormData,

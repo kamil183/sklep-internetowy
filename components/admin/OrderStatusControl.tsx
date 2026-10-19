@@ -1,23 +1,52 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
-import { setOrderStatusFormAction, type ActionResult } from "@/app/admin/actions";
+import { setOrderStatusAction, type ActionResult } from "@/app/admin/actions";
+import type { OrderStatus } from "@/lib/types";
 
-const STATUSES = ["NEW", "PAID", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
+const STATUSES: OrderStatus[] = [
+  "NEW",
+  "PAID",
+  "PROCESSING",
+  "SHIPPED",
+  "DELIVERED",
+  "CANCELLED",
+];
 
-export default function OrderStatusControl({ orderId, status }: { orderId: string; status: string }) {
-  const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
-    setOrderStatusFormAction,
-    null,
-  );
+export default function OrderStatusControl({
+  orderId,
+  status,
+}: {
+  orderId: string;
+  status: string;
+}) {
+  const [selected, setSelected] = useState<OrderStatus>(status as OrderStatus);
+  const [state, setState] = useState<ActionResult | null>(null);
+  const [pending, startTransition] = useTransition();
 
   return (
-    <form action={formAction} className="flex flex-wrap items-center gap-3">
+    <form
+      className="flex flex-wrap items-center gap-3"
+      onSubmit={(event) => {
+        event.preventDefault();
+        setState(null);
+        startTransition(async () => {
+          setState(await setOrderStatusAction(orderId, selected));
+        });
+      }}
+    >
       <input type="hidden" name="orderId" value={orderId} />
-      <select name="status" defaultValue={status} className="admin-input w-auto">
+      <select
+        name="status"
+        value={selected}
+        onChange={(event) => setSelected(event.target.value as OrderStatus)}
+        className="admin-input w-auto"
+      >
         {STATUSES.map((s) => (
-          <option key={s} value={s}>{s}</option>
+          <option key={s} value={s}>
+            {s}
+          </option>
         ))}
       </select>
       <button type="submit" disabled={pending} className="admin-btn">

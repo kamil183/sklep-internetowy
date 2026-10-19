@@ -11,7 +11,7 @@ export default function Page() {
     <LegalPage
       title="Dostawa i płatności"
       slug="dostawa-i-platnosci"
-      intro="Informacje o sposobach dostawy, kosztach oraz metodach płatności obsługiwanych przez Stripe."
+      intro="Informacje o sposobach dostawy, kosztach oraz metodach płatności — online (Stripe: karta, BLIK, Przelewy24) i za pobraniem u kuriera."
     />
   );
 }

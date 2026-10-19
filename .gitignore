@@ -16,3 +16,6 @@ tsconfig.tsbuildinfo
 # system
 .DS_Store
 npm-debug.log*
+
+.vercel
+.env*

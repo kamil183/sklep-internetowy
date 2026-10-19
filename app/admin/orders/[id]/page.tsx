@@ -3,8 +3,9 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getOrderById } from "@/lib/db/repository";
 import { dbReady, DB_OFFLINE_NOTICE } from "@/lib/admin/guard";
-import { formatPrice } from "@/lib/utils/format";
+import { formatPrice, paymentStatusLabel } from "@/lib/utils/format";
 import OrderStatusControl from "@/components/admin/OrderStatusControl";
+import CashPaymentControl from "@/components/admin/CashPaymentControl";
 
 export const metadata: Metadata = { title: "Zamówienie" };
 export const dynamic = "force-dynamic";
@@ -51,7 +52,11 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
         </div>
         <div className="text-right">
           <p className="font-display text-3xl text-gold">{formatPrice(order.totalCents)}</p>
-          <p className="mt-1"><span className="admin-badge">PŁATNOŚĆ: {order.paymentStatus}</span></p>
+          <p className="mt-1">
+            <span className="admin-badge">
+              {order.paymentMethod === "cod" ? "ZA POBRANIEM" : "STRIPE"} · {paymentStatusLabel(order.paymentStatus)}
+            </span>
+          </p>
         </div>
       </div>
 
@@ -109,6 +114,9 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
       <section className="admin-card">
         <h2 className="label mb-4">Status zamówienia</h2>
         <OrderStatusControl orderId={order.id} status={order.status} />
+        {order.paymentMethod === "cod" && order.paymentStatus !== "PAID" && (
+          <CashPaymentControl orderId={order.id} />
+        )}
         {order.stripeCheckoutSessionId && (
           <p className="mt-4 text-[11px] text-warm-600">
             Stripe session: <code className="text-warm-300">{order.stripeCheckoutSessionId}</code>

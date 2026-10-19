@@ -49,11 +49,30 @@ create table if not exists orders (
   status                    text not null default 'NEW'
                             check (status in ('NEW','PAID','PROCESSING','SHIPPED','DELIVERED','CANCELLED')),
   payment_status            text not null default 'PENDING'
-                            check (payment_status in ('PENDING','PAID','FAILED','REFUNDED')),
+                            check (payment_status in ('PENDING','PAID','FAILED','REFUNDED','ON_DELIVERY')),
+  payment_method            text not null default 'stripe'
+                            check (payment_method in ('stripe','cod')),
   stripe_checkout_session_id text unique,
   created_at                timestamptz not null default now(),
   updated_at                timestamptz not null default now()
 );
+
+-- Migracja dla istniejących baz (uruchom raz; bezpieczne wielokrotnie).
+-- Dodaje obsługę płatności za pobraniem bez kasowania danych.
+alter table orders
+  add column if not exists payment_method text not null default 'stripe';
+
+alter table orders
+  drop constraint if exists orders_payment_status_check;
+alter table orders
+  add constraint orders_payment_status_check
+  check (payment_status in ('PENDING','PAID','FAILED','REFUNDED','ON_DELIVERY'));
+
+alter table orders
+  drop constraint if exists orders_payment_method_check;
+alter table orders
+  add constraint orders_payment_method_check
+  check (payment_method in ('stripe','cod'));
 
 create index if not exists orders_status_idx on orders (status);
 create index if not exists orders_payment_status_idx on orders (payment_status);

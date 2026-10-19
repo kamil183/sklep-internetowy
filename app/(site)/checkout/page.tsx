@@ -14,6 +14,7 @@ export default function CheckoutPage() {
     id: method.id,
     label: method.label,
     priceCents: method.priceCents,
+    codAvailable: method.codAvailable,
   }));
 
   return (

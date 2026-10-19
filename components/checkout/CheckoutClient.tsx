@@ -11,7 +11,12 @@ import {
   type CheckoutInput,
 } from "@/lib/validation/schemas";
 
-type ShippingMethodView = { id: string; label: string; priceCents: number | null };
+type ShippingMethodView = {
+  id: string;
+  label: string;
+  priceCents: number | null;
+  codAvailable: boolean;
+};
 
 type Props = {
   shippingMethods: ShippingMethodView[];
@@ -27,6 +32,7 @@ type Props = {
 
 type CustomerForm = CheckoutInput["customer"];
 type DeliveryForm = CheckoutInput["delivery"];
+type PaymentForm = NonNullable<CheckoutInput["payment"]>;
 
 const EMPTY_CUSTOMER: CustomerForm = {
   firstName: "",
@@ -43,12 +49,17 @@ const EMPTY_DELIVERY: DeliveryForm = {
   city: "",
 };
 
+const EMPTY_PAYMENT: PaymentForm = {
+  method: "stripe",
+};
+
 export default function CheckoutClient({ shippingMethods, stripeEnabled, dbEnabled, product }: Props) {
   const { items, subtotalCents, clearCart } = useCart();
   const router = useRouter();
 
   const [customer, setCustomer] = useState<CustomerForm>(EMPTY_CUSTOMER);
   const [delivery, setDelivery] = useState<DeliveryForm>(EMPTY_DELIVERY);
+  const [payment, setPayment] = useState<PaymentForm>(EMPTY_PAYMENT);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
@@ -58,6 +69,7 @@ export default function CheckoutClient({ shippingMethods, stripeEnabled, dbEnabl
     [shippingMethods, delivery.method],
   );
   const shippingCents = selectedShipping?.priceCents ?? null;
+  const codAvailable = selectedShipping?.codAvailable ?? false;
 
   const displayName = product.name ?? "[NAZWA PERFUM]";
   const totalCents =
@@ -68,6 +80,17 @@ export default function CheckoutClient({ shippingMethods, stripeEnabled, dbEnabl
   }
   function setDeliveryField<K extends keyof DeliveryForm>(key: K, value: DeliveryForm[K]) {
     setDelivery((prev) => ({ ...prev, [key]: value }));
+  }
+  function setPaymentField<K extends keyof PaymentForm>(key: K, value: PaymentForm[K]) {
+    setPayment((prev) => ({ ...prev, [key]: value }));
+  }
+  function selectDeliveryMethod(id: DeliveryForm["method"]) {
+    setDelivery((prev) => ({ ...prev, method: id }));
+    // Paczkomat nie obsługuje pobrania — wracamy do płatności online.
+    const supportsCod = shippingMethods.find((method) => method.id === id)?.codAvailable ?? false;
+    if (!supportsCod) {
+      setPayment((prev) => (prev.method === "cod" ? { method: "stripe" } : prev));
+    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -80,6 +103,13 @@ export default function CheckoutClient({ shippingMethods, stripeEnabled, dbEnabl
       return;
     }
 
+    if (payment.method === "cod" && !codAvailable) {
+      setRequestError(
+        "Za pobraniem jest dostępne tylko przy dostawie kurierem — wybierz kuriera albo zapłać online.",
+      );
+      return;
+    }
+
     const payload: CheckoutInput = {
       items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
       customer,
@@ -87,6 +117,7 @@ export default function CheckoutClient({ shippingMethods, stripeEnabled, dbEnabl
         ...delivery,
         lockerCode: delivery.lockerCode?.trim() ? delivery.lockerCode.trim() : undefined,
       },
+      payment,
     };
 
     const parsed = checkoutSchema.safeParse(payload);
@@ -151,7 +182,7 @@ export default function CheckoutClient({ shippingMethods, stripeEnabled, dbEnabl
 
       <h1 className="font-display text-4xl md:text-5xl">Checkout</h1>
       <p className="mt-3 text-sm text-warm-500">
-        Płatność obsługiwana przez Stripe — numer karty wpisywany jest wyłącznie na stronie Stripe.
+        Wybierz sposób płatności — płatność online obsługiwana przez Stripe.
       </p>
 
       {missing.length > 0 && (
@@ -253,7 +284,7 @@ export default function CheckoutClient({ shippingMethods, stripeEnabled, dbEnabl
                       name="delivery-method"
                       className="accent-gold-400"
                       checked={delivery.method === method.id}
-                      onChange={() => setDeliveryField("method", method.id as DeliveryForm["method"])}
+                      onChange={() => selectDeliveryMethod(method.id as DeliveryForm["method"])}
                     />
                     {method.label}
                   </span>
@@ -284,21 +315,89 @@ export default function CheckoutClient({ shippingMethods, stripeEnabled, dbEnabl
             )}
           </section>
 
-          {requestError && (
-            <div
-              className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-200"
-              role="alert"
-            >
-              {requestError}
+          <section>
+            <h2 className="label mb-6">Sposób płatności</h2>
+            <div className="space-y-3">
+              <label
+                className={`flex cursor-pointer items-center justify-between rounded-xl border p-4 text-sm transition ${
+                  payment.method === "stripe"
+                    ? "border-gold/60 bg-gold/5"
+                    : "border-warm-800/70 bg-onyx-950/40 hover:border-gold/30"
+                }`}
+              >
+                <span className="flex items-center gap-3">
+                  <input
+                    type="radio"
+                    name="payment-method"
+                    className="accent-gold-400"
+                    checked={payment.method === "stripe"}
+                    onChange={() => setPaymentField("method", "stripe")}
+                  />
+                  Płatność online (karta, BLIK, Przelewy24)
+                </span>
+                <span className="text-warm-500">Online</span>
+              </label>
+              <label
+                className={`flex items-center justify-between rounded-xl border p-4 text-sm transition ${
+                  !codAvailable
+                    ? "cursor-not-allowed border-warm-800/40 bg-onyx-950/20 opacity-50"
+                    : payment.method === "cod"
+                      ? "cursor-pointer border-gold/60 bg-gold/5"
+                      : "cursor-pointer border-warm-800/70 bg-onyx-950/40 hover:border-gold/30"
+                }`}
+              >
+                <span className="flex items-center gap-3">
+                  <input
+                    type="radio"
+                    name="payment-method"
+                    className="accent-gold-400"
+                    disabled={!codAvailable}
+                    checked={payment.method === "cod"}
+                    onChange={() => setPaymentField("method", "cod")}
+                  />
+                  Za pobraniem — płacisz kurierowi przy dostawie
+                </span>
+                <span className="text-warm-500">{codAvailable ? "Gotówka" : "Tylko kurier"}</span>
+              </label>
+              {!codAvailable && (
+                <p className="text-xs text-warm-600">
+                  Pobranie jest dostępne wyłącznie przy dostawie kurierem. Przy paczkomacie zapłać online.
+                </p>
+              )}
             </div>
-          )}
+            {errors["payment.method"] && (
+              <p className="field-error mt-3">{errors["payment.method"]}</p>
+            )}
+          </section>
+
+          {requestError && (
+              <div
+                className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-200"
+                role="alert"
+              >
+                {requestError}
+              </div>
+            )}
 
           <button type="submit" disabled={submitting} className="btn-primary w-full disabled:opacity-60">
-            {submitting ? "PRZEKIEROWYWANIE…" : "PRZEJDŹ DO PŁATNOŚCI"}
+            {submitting
+              ? payment.method === "cod"
+                ? "ZAMAWIAM…"
+                : "PRZEKIEROWYWANIE…"
+              : payment.method === "cod"
+                ? "ZŁÓŻ ZAMÓWIENIE"
+                : "PRZEJDŹ DO PŁATNOŚCI"}
           </button>
-          <p className="flex items-center justify-center gap-2 text-[11px] text-warm-600">
-            <Lock className="h-3.5 w-3.5" /> Płatność obsługiwana przez Stripe
-          </p>
+          {payment.method === "stripe" && (
+            <p className="flex items-center justify-center gap-2 text-[11px] text-warm-600">
+              <Lock className="h-3.5 w-3.5" /> Płatność obsługiwana przez Stripe (karta, BLIK, Przelewy24)
+            </p>
+          )}
+          {payment.method === "cod" && (
+            <p className="flex items-center justify-center gap-2 text-[11px] text-warm-600">
+              <ShieldCheck className="h-3.5 w-3.5" /> Zapłacisz kurierowi przy dostawie (za pobraniem)
+            </p>
+          )}
         </form>
 
         <aside className="h-fit rounded-2xl border border-gold/15 bg-onyx-950/60 p-6 lg:sticky lg:top-28">
@@ -342,10 +441,17 @@ export default function CheckoutClient({ shippingMethods, stripeEnabled, dbEnabl
               {totalCents !== null ? formatPrice(totalCents) : "[CENA]"}
             </span>
           </div>
-          <p className="mt-5 flex items-start gap-2 text-[11px] leading-relaxed text-warm-600">
-            <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            Status płatności potwierdzany jest przez webhook Stripe, nie przez powrót na stronę.
-          </p>
+          { payment.method === "stripe" ? (
+            <p className="mt-5 flex items-start gap-2 text-[11px] leading-relaxed text-warm-600">
+              <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              Status płatności potwierdzany jest przez webhook Stripe, nie przez powrót na stronę.
+            </p>
+          ) : (
+            <p className="mt-5 flex items-start gap-2 text-[11px] leading-relaxed text-warm-600">
+              <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              Zamówienie przyjęte — zapłacisz kurierowi przy dostawie.
+            </p>
+          )}
         </aside>
       </div>
     </main>

@@ -47,6 +47,11 @@ export const checkoutSchema = z.object({
     postCode: z.string().trim().min(2, "Podaj kod pocztowy"),
     city: z.string().trim().min(1, "Podaj miejscowość"),
   }),
+  payment: z
+    .object({
+      method: z.enum(["stripe", "cod"]),
+    })
+    .default({ method: "stripe" }),
 });
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;

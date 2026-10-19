@@ -11,7 +11,9 @@ export type OrderStatus =
   | "DELIVERED"
   | "CANCELLED";
 
-export type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "REFUNDED";
+export type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "REFUNDED" | "ON_DELIVERY";
+
+export type PaymentMethod = "stripe" | "cod";
 
 export type DeliveryMethod = "INPOST_LOCKER" | "INPOST_COURIER";
 
@@ -67,6 +69,7 @@ export interface Order {
   } | null;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
+  paymentMethod: PaymentMethod;
   stripeCheckoutSessionId: string | null;
   createdAt: string;
   updatedAt: string;

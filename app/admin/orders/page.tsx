@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Package } from "lucide-react";
 import { listOrders } from "@/lib/db/repository";
 import { dbReady, DB_OFFLINE_NOTICE } from "@/lib/admin/guard";
-import { formatPrice } from "@/lib/utils/format";
+import { formatPrice, paymentStatusLabel } from "@/lib/utils/format";
 import OrderStatusControl from "@/components/admin/OrderStatusControl";
 
 export const metadata: Metadata = { title: "Zamówienia" };
@@ -18,7 +18,7 @@ export default async function AdminOrdersPage() {
           <p className="mb-1 font-semibold text-warning">Brak bazy danych.</p>
           <p className="text-warm-500">{DB_OFFLINE_NOTICE}</p>
           <p className="mt-2 text-warm-500">
-            Status płatności zmienia wyłącznie webhook Stripe — nigdy przycisk w panelu.
+            Płatności online potwierdza webhook Stripe; pobranie oznaczasz ręcznie w szczegółach zamówienia.
           </p>
         </div>
       </div>
@@ -31,7 +31,9 @@ export default async function AdminOrdersPage() {
     <div className="space-y-8">
       <div>
         <h1 className="font-display text-3xl">Zamówienia</h1>
-        <p className="mt-1 text-sm text-warm-500">Statusy logistyczne; płatność potwierdza webhook Stripe.</p>
+        <p className="mt-1 text-sm text-warm-500">
+          Płatności online potwierdza webhook Stripe; pobranie oznaczasz ręcznie w szczegółach zamówienia.
+        </p>
       </div>
 
       {orders.length === 0 ? (
@@ -61,7 +63,8 @@ export default async function AdminOrdersPage() {
                   <p className="font-display text-2xl text-gold">{formatPrice(order.totalCents)}</p>
                   <p className="mt-1">
                     <span className="admin-badge">
-                      PŁATNOŚĆ: {order.paymentStatus}
+                      {order.paymentMethod === "cod" ? "ZA POBRANIEM" : "STRIPE"} · PŁATNOŚĆ:{" "}
+                      {paymentStatusLabel(order.paymentStatus)}
                     </span>
                   </p>
                 </div>

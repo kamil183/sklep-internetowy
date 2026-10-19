@@ -15,6 +15,22 @@ export function formatDate(iso: string): string {
   }).format(new Date(iso));
 }
 
+/** Czytelna etykieta statusu płatności (panel admina). */
+export function paymentStatusLabel(status: string): string {
+  switch (status) {
+    case "PAID":
+      return "OPŁACONE";
+    case "FAILED":
+      return "NIEUDANE";
+    case "REFUNDED":
+      return "ZWROT";
+    case "ON_DELIVERY":
+      return "DO ZAPŁATY PRZY ODBIORZE";
+    default:
+      return "OCZEKUJE";
+  }
+}
+
 /** Bezpieczne pobranie pojedynczego parametru URL. */
 export function firstParam(value: string | string[] | undefined): string | undefined {
   if (Array.isArray(value)) return value[0];
