@@ -71,6 +71,10 @@ export interface Order {
   paymentStatus: PaymentStatus;
   paymentMethod: PaymentMethod;
   stripeCheckoutSessionId: string | null;
+  /** ID przesyłki w InPost ShipX — null, jeśli etykiety jeszcze nie wygenerowano. */
+  shipxShipmentId: number | null;
+  /** Numer nadania InPost — widoczny w panelu admina. */
+  shipxTrackingNumber: string | null;
   createdAt: string;
   updatedAt: string;
 }

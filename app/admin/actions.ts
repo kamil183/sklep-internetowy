@@ -4,10 +4,19 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/admin";
 import {
   DatabaseNotConfiguredError,
+  attachShipxShipment,
   confirmCashPayment,
+  getOrderById,
   updateOrderStatus,
   updateProduct,
 } from "@/lib/db/repository";
+import {
+  ShipxApiError,
+  ShipxNotConfiguredError,
+  createShipment,
+  isShipxConfigured,
+} from "@/lib/shipx/client";
+import { OrderDataIncompleteError, buildShipmentPayload } from "@/lib/shipx/payload";
 import type { OrderStatus } from "@/lib/types";
 
 const ORDER_STATUSES: OrderStatus[] = [
@@ -21,8 +30,19 @@ const ORDER_STATUSES: OrderStatus[] = [
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
+export type ShipmentResult =
+  | { ok: true; trackingNumber: string | null }
+  | { ok: false; error: string };
+
 function errorMessage(error: unknown, fallback: string): string {
   if (error instanceof DatabaseNotConfiguredError) return error.message;
+  if (error instanceof ShipxNotConfiguredError) return error.message;
+  if (error instanceof OrderDataIncompleteError) return error.message;
+  if (error instanceof ShipxApiError) {
+    // Komunikat zrozumiały dla właścicielki + szczegóły od InPost w konsoli.
+    console.error("[shipx] błąd API:", error.status, error.details);
+    return error.message;
+  }
   if (error instanceof Error && error.message) return error.message;
   return fallback;
 }
@@ -131,6 +151,43 @@ export async function markCashPaymentReceived(
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${orderId}`);
   return { ok: true };
+}
+
+/**
+ * Nadanie przesyłki w InPost ShipX z poziomu panelu admina.
+ * Tworzy przesyłkę, zapisuje ID i numer nadania, po czym panel pokazuje
+ * link do etykiety PDF.
+ */
+export async function createShipmentAction(orderId: string): Promise<ShipmentResult> {
+  await requireAdmin();
+
+  if (!orderId) return { ok: false, error: "Brak identyfikatora zamówienia." };
+  if (!isShipxConfigured()) {
+    return { ok: false, error: new ShipxNotConfiguredError().message };
+  }
+
+  const order = await getOrderById(orderId).catch(() => null);
+  if (!order) return { ok: false, error: "Nie znaleziono zamówienia." };
+
+  if (order.shipxShipmentId !== null) {
+    return {
+      ok: false,
+      error: "Ta przesyłka została już nadana. Etykieta jest dostępna powyżej.",
+    };
+  }
+
+  try {
+    const payload = buildShipmentPayload(order);
+    const shipment = await createShipment(payload);
+    await attachShipxShipment(orderId, shipment.id, shipment.tracking_number ?? null);
+
+    revalidatePath("/admin/orders");
+    revalidatePath(`/admin/orders/${orderId}`);
+
+    return { ok: true, trackingNumber: shipment.tracking_number ?? null };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error, "Nie udało się nadać przesyłki.") };
+  }
 }
 
 /** Starsza wersja akcji pod useActionState — zachowana dla zgodności. */

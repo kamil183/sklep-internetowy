@@ -6,6 +6,7 @@ import { dbReady, DB_OFFLINE_NOTICE } from "@/lib/admin/guard";
 import { formatPrice, paymentStatusLabel } from "@/lib/utils/format";
 import OrderStatusControl from "@/components/admin/OrderStatusControl";
 import CashPaymentControl from "@/components/admin/CashPaymentControl";
+import ShipmentPanel from "@/components/admin/ShipmentPanel";
 
 export const metadata: Metadata = { title: "Zamówienie" };
 export const dynamic = "force-dynamic";
@@ -122,6 +123,17 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
             Stripe session: <code className="text-warm-300">{order.stripeCheckoutSessionId}</code>
           </p>
         )}
+      </section>
+
+      <section className="admin-card">
+        <h2 className="label mb-4">Wysyłka InPost</h2>
+        <ShipmentPanel
+          orderId={order.id}
+          shipxShipmentId={order.shipxShipmentId}
+          shipxTrackingNumber={order.shipxTrackingNumber}
+          isCod={order.paymentMethod === "cod"}
+          isCourier={order.deliveryMethod === "INPOST_COURIER"}
+        />
       </section>
     </div>
   );

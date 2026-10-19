@@ -225,6 +225,8 @@ interface OrderRow {
   payment_status: string;
   payment_method: string | null;
   stripe_checkout_session_id: string | null;
+  shipx_shipment_id: number | null;
+  shipx_tracking_number: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -249,6 +251,8 @@ function mapOrder(row: OrderRow, items: OrderItem[] = [], customer?: Customer): 
     paymentStatus: row.payment_status as Order["paymentStatus"],
     paymentMethod: (row.payment_method as Order["paymentMethod"]) ?? "stripe",
     stripeCheckoutSessionId: row.stripe_checkout_session_id,
+    shipxShipmentId: row.shipx_shipment_id,
+    shipxTrackingNumber: row.shipx_tracking_number,
     createdAt: date(row.created_at),
     updatedAt: date(row.updated_at),
   };
@@ -447,6 +451,25 @@ export async function getOrderById(orderId: string): Promise<Order | null> {
     createdAt: date(row.c_created_at),
   };
   return mapOrder(row, itemsMap.get(row.id) ?? [], customer);
+}
+
+/**
+ * Zapisuje ID przesyłki ShipX i numer nadania InPost przy zamówieniu.
+ * Wywoływane po pomyślnym utworzeniu przesyłki przez akcję admina.
+ */
+export async function attachShipxShipment(
+  orderId: string,
+  shipxShipmentId: number,
+  shipxTrackingNumber: string | null,
+): Promise<void> {
+  await getPool().query(
+    `update orders
+        set shipx_shipment_id = $2,
+            shipx_tracking_number = $3,
+            updated_at = now()
+      where id = $1`,
+    [orderId, shipxShipmentId, shipxTrackingNumber],
+  );
 }
 
 export async function updateOrderStatus(orderId: string, status: OrderStatus): Promise<Order> {
