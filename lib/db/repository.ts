@@ -164,6 +164,52 @@ export async function resolveCheckoutProduct(
   }
 }
 
+/**
+ * Produkt z konfiguracji, który ma trafić do zamówienia.
+ * `order_items.product_id` ma klucz obcy do `products(id)`, dlatego każda
+ * pozycja koszyka musi mieć wiersz w bazie — nawet jeśli cena i opis
+ * pochodzą z plików w `lib/config`.
+ */
+export interface CheckoutCatalogItem {
+  slug: string;
+  name: string | null;
+  priceCents: number | null;
+  volume: string | null;
+  description: string | null;
+  scentStory: string | null;
+  notes: string[];
+  /** Początkowy stan przy pierwszym wstawieniu (potem liczy się baza). */
+  stock: number;
+  isActive: boolean;
+}
+
+/** Zwraca wiersz produktu, tworząc go z konfiguracji, jeśli jeszcze nie istnieje. */
+export async function ensureProductRow(
+  item: CheckoutCatalogItem,
+): Promise<DbProduct> {
+  const existing = await getProductBySlug(item.slug);
+  if (existing) return existing;
+
+  const res = await getPool().query<ProductRow>(
+    `insert into products (slug, name, price_cents, volume, description, scent_story, notes, stock, is_active)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     on conflict (slug) do update set updated_at = now()
+     returning *`,
+    [
+      item.slug,
+      item.name,
+      item.priceCents,
+      item.volume,
+      item.description,
+      item.scentStory,
+      JSON.stringify(item.notes ?? []),
+      item.stock,
+      item.isActive,
+    ],
+  );
+  return mapProduct(res.rows[0]);
+}
+
 /* ------------------------------------------------------------------ */
 /* Klienci                                                             */
 /* ------------------------------------------------------------------ */

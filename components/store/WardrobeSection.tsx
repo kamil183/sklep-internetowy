@@ -8,6 +8,7 @@
 
 import Reveal from "@/components/ui/Reveal";
 import { PRODUCT } from "@/lib/config/product";
+import { SAMPLE_PRODUCT } from "@/lib/config/sample";
 import {
   displayConcentration,
   displayDescription,
@@ -36,6 +37,27 @@ export default function WardrobeSection() {
     .filter(Boolean)
     .join(" · ");
 
+  const sampleMeta = [
+    displayConcentration(SAMPLE_PRODUCT),
+    displayVolume(SAMPLE_PRODUCT),
+    formatPrice(SAMPLE_PRODUCT.priceCents),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const handleSampleBuy = () => {
+    addItem(
+      {
+        productId: SAMPLE_PRODUCT.id,
+        name: displayName(SAMPLE_PRODUCT),
+        priceCents: SAMPLE_PRODUCT.priceCents,
+        imageUrl: SAMPLE_PRODUCT.images[0] ?? null,
+      },
+      1,
+    );
+    openCart();
+  };
+
   const handleBuy = () => {
     addItem(
       {
@@ -58,7 +80,7 @@ export default function WardrobeSection() {
           </h2>
         </Reveal>
 
-        <div className="mt-14 md:mt-16">
+        <div className="mt-14 grid gap-14 md:mt-16 md:grid-cols-2 md:gap-10">
           <Reveal>
             <article className="group max-w-2xl">
               <div className="relative aspect-[4/5] overflow-hidden bg-shell">
@@ -86,6 +108,42 @@ export default function WardrobeSection() {
                 <button type="button" className="btn-primary mt-7" onClick={handleBuy}>
                   Kup teraz
                 </button>
+              </div>
+            </article>
+          </Reveal>
+
+          <Reveal delay={0.1}>
+            <article className="group max-w-2xl">
+              <div className="relative aspect-[4/5] overflow-hidden bg-shell">
+                {/* eslint-disable-next-line @next/next/no-img-element -- proste zdjęcie produktu bez optymalizatora */}
+                <img
+                  src={SAMPLE_PRODUCT.images[0] ?? "/images/probka-perfum-5ml.svg"}
+                  alt="Próbka perfum 5 ml"
+                  className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+                  loading="lazy"
+                />
+              </div>
+
+              <div className="mt-7 max-w-xl">
+                <h3 className="font-display text-3xl leading-tight md:text-4xl">
+                  {displayName(SAMPLE_PRODUCT)}
+                </h3>
+                <p className="mt-3 font-label text-[10px] uppercase tracking-[0.3em] text-warm-500">
+                  {sampleMeta}
+                </p>
+                <p className="mt-4 leading-relaxed text-warm-300">
+                  {displayDescription(SAMPLE_PRODUCT)}
+                </p>
+                <button
+                  type="button"
+                  className="btn-primary mt-7"
+                  onClick={handleSampleBuy}
+                >
+                  Dodaj próbkę
+                </button>
+                <p className="mt-3 text-xs text-warm-500">
+                  Zapłacisz razem za jedną przesyłkę.
+                </p>
               </div>
             </article>
           </Reveal>

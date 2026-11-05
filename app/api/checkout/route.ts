@@ -1,16 +1,18 @@
 import { NextResponse } from "next/server";
 import { PRODUCT } from "@/lib/config/product";
+import { SAMPLE_PRODUCT } from "@/lib/config/sample";
 import { getShippingMethod } from "@/lib/config/shipping";
 import {
   DatabaseNotConfiguredError,
   attachStripeSession,
   createOrder,
+  ensureProductRow,
   findCustomerOrCreate,
   isDatabaseConfigured,
-  resolveCheckoutProduct,
 } from "@/lib/db/repository";
 import { getStripe, isStripeConfigured } from "@/lib/stripe/server";
 import { checkoutSchema, firstZodError } from "@/lib/validation/schemas";
+import type { DbProduct } from "@/lib/types";
 
 /**
  * POST /api/checkout
@@ -19,6 +21,9 @@ import { checkoutSchema, firstZodError } from "@/lib/validation/schemas";
  * (przekierowanie na stronę Stripe — numer karty, BLIK itd. wpisywane
  * są TYLKO na Stripe, nigdy u nas). Bez skonfigurowanych kluczy/zmiennej
  * zwraca czytelny komunikat — żadnych udawanych płatności.
+ *
+ * Sklep sprzedaje dwie pozycje: flakon LAVIÉRA i próbkę 5 ml. Każda pozycja
+ * koszyka jest osobnym wierszem `order_items` i osobną linią w Stripe.
  */
 
 const json = (error: string, status: number) =>
@@ -51,73 +56,101 @@ export async function POST(req: Request) {
     );
   }
 
-  // 3. Produkt i cena (jeden produkt sklepu)
-  let dbProduct = await resolveCheckoutProduct(input.items[0].productId).catch(() => null);
-  // If DB configured but product not found, try to ensure it exists
-  if (!dbProduct && isDatabaseConfigured()) {
+  // 3. Pozycje koszyka → produkty (katalog: flakon + próbka)
+  const CATALOG = [
+    { config: PRODUCT, stock: 10 },
+    { config: SAMPLE_PRODUCT, stock: 50 },
+  ];
+
+  interface OrderLine {
+    productId: string;
+    name: string;
+    volume: string | null;
+    quantity: number;
+    unitPriceCents: number;
+  }
+
+  const lines: OrderLine[] = [];
+  // Suma sztuk per produkt — stan magazynowy sprawdzamy na końcu, jednym zapytaniem.
+  const perProduct = new Map<
+    string,
+    { quantity: number; stock: number; label: string }
+  >();
+
+  for (const item of input.items) {
+    const entry = CATALOG.find(
+      (candidate) => candidate.config.id === item.productId,
+    );
+    if (!entry) return json("Nieznany produkt w koszyku.", 400);
+    const { config } = entry;
+    const label = config.name ?? config.brand;
+
+    let dbRow: DbProduct;
     try {
-      // Try to find by slug again or insert from config
-      const { getPool } = await import("@/lib/db/index");
-      const res = await getPool().query(
-        `insert into products (id, slug, name, price_cents, volume, description, scent_story, notes, stock, is_active)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-         on conflict (slug) do update set updated_at = now()
-         returning *`,
-        [
-          PRODUCT.id,
-          PRODUCT.slug,
-          PRODUCT.name,
-          PRODUCT.priceCents,
-          PRODUCT.volume,
-          PRODUCT.description,
-          PRODUCT.scent.story,
-          JSON.stringify(PRODUCT.scent.notes || []),
-          10,
-          PRODUCT.isActive,
-        ]
-      );
-      if (res.rows[0]) {
-        dbProduct = {
-          id: res.rows[0].id,
-          slug: res.rows[0].slug,
-          name: res.rows[0].name,
-          priceCents: res.rows[0].price_cents,
-          volume: res.rows[0].volume,
-          description: res.rows[0].description,
-          scentStory: res.rows[0].scent_story,
-          notes: Array.isArray(res.rows[0].notes) ? res.rows[0].notes : [],
-          stock: res.rows[0].stock,
-          isActive: res.rows[0].is_active,
-          imageUrl: res.rows[0].image_url,
-          createdAt: res.rows[0].created_at?.toISOString(),
-          updatedAt: res.rows[0].updated_at?.toISOString(),
-        } as any;
+      // `order_items.product_id` ma klucz obcy do `products(id)` — wiersz musi istnieć.
+      dbRow = await ensureProductRow({
+        slug: config.slug,
+        name: config.name,
+        priceCents: config.priceCents,
+        volume: config.volume,
+        description: config.description,
+        scentStory: config.scent.story,
+        notes: config.scent.notes,
+        stock: entry.stock,
+        isActive: config.isActive,
+      });
+    } catch (error) {
+      if (error instanceof DatabaseNotConfiguredError) {
+        return json(error.message, 503);
       }
-    } catch (e) {
-      console.error("Failed to ensure product exists:", e);
+      console.error("[checkout] nie udało się pobrać produktu:", error);
+      return json(
+        "Nie udało się zweryfikować produktu. Spróbuj ponownie.",
+        500,
+      );
+    }
+
+    const unitPriceCents = dbRow.priceCents ?? config.priceCents;
+    if (unitPriceCents === null || unitPriceCents <= 0) {
+      return json(
+        `Cena produktu „${label}” nie jest ustawiona — uzupełnij ją w panelu /admin/products.`,
+        409,
+      );
+    }
+    if (!dbRow.isActive) {
+      return json(`Produkt „${label}” jest aktualnie niedostępny.`, 409);
+    }
+
+    lines.push({
+      productId: dbRow.id,
+      name: dbRow.name ?? label,
+      volume: dbRow.volume ?? config.volume,
+      quantity: item.quantity,
+      unitPriceCents,
+    });
+
+    const stats = perProduct.get(dbRow.id) ?? {
+      quantity: 0,
+      stock: dbRow.stock,
+      label,
+    };
+    stats.quantity += item.quantity;
+    perProduct.set(dbRow.id, stats);
+  }
+
+  for (const stats of perProduct.values()) {
+    if (stats.stock > 0 && stats.quantity > stats.stock) {
+      return json(
+        `Dostępna ilość „${stats.label}”: ${stats.stock} szt.`,
+        409,
+      );
     }
   }
 
-  const knownIds = new Set([PRODUCT.id, dbProduct?.id].filter(Boolean) as string[]);
-  if (input.items.some((item) => !knownIds.has(item.productId))) {
-    return json("Nieznany produkt w koszyku.", 400);
-  }
-
-  const priceCents = dbProduct?.priceCents ?? PRODUCT.priceCents;
-  if (priceCents === null || priceCents <= 0) {
-    return json(
-      "Cena produktu nie jest ustawiona — uzupełnij ją w panelu /admin/products lub w lib/config/product.ts.",
-      409,
-    );
-  }
-
-  if (dbProduct && !dbProduct.isActive) {
-    return json("Produkt jest aktualnie niedostępny.", 409);
-  }
-  const quantity = input.items.reduce((sum, item) => sum + item.quantity, 0);
-  if (dbProduct && dbProduct.stock > 0 && quantity > dbProduct.stock) {
-    return json(`Dostępna ilość: ${dbProduct.stock} szt.`, 409);
-  }
+  const subtotalCents = lines.reduce(
+    (sum, line) => sum + line.unitPriceCents * line.quantity,
+    0,
+  );
 
   // 4. Dostawa
   const shipping = getShippingMethod(input.delivery.method);
@@ -144,14 +177,12 @@ export async function POST(req: Request) {
     const paymentMethod = input.payment?.method ?? "stripe";
     const order = await createOrder({
       customerId: customer.id,
-      items: [
-        {
-          productId: dbProduct!.id,
-          quantity,
-          unitPriceCents: priceCents,
-        },
-      ],
-      subtotalCents: priceCents * quantity,
+      items: lines.map((line) => ({
+        productId: line.productId,
+        quantity: line.quantity,
+        unitPriceCents: line.unitPriceCents,
+      })),
+      subtotalCents,
       shippingCents: shipping.priceCents,
       deliveryMethod: input.delivery.method,
       lockerCode: input.delivery.lockerCode || null,
@@ -184,25 +215,21 @@ export async function POST(req: Request) {
   const stripe = getStripe();
   if (!stripe) return json("Stripe nie jest skonfigurowany.", 503);
 
-  const productName = dbProduct?.name ?? PRODUCT.name ?? PRODUCT.brand;
-
   try {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       customer_email: input.customer.email,
-      line_items: [
-        {
-          quantity,
-          price_data: {
-            currency: "pln",
-            unit_amount: priceCents,
-            product_data: {
-              name: productName,
-              description: dbProduct?.volume ?? undefined,
-            },
+      line_items: lines.map((line) => ({
+        quantity: line.quantity,
+        price_data: {
+          currency: "pln",
+          unit_amount: line.unitPriceCents,
+          product_data: {
+            name: line.name,
+            description: line.volume ?? undefined,
           },
         },
-      ],
+      })),
       shipping_options: [
         {
           shipping_rate_data: {
